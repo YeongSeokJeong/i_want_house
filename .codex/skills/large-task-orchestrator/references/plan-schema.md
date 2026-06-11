@@ -1,0 +1,50 @@
+# plan.md Schema
+
+```markdown
+# Task Plan
+
+## Task Metadata
+- Task Name: <user-facing task name>
+- Task ID: <kebab-case id>
+- Task Branch: <task branch name>
+- Plan Version: v1
+- Last Updated: <date>
+
+## Planning Assumptions
+- <assumption 1>
+- <assumption 2>
+
+## Feature Catalog
+| Feature ID | Feature Name | Goal | Depends On | Complexity | Owner |
+|------------|--------------|------|------------|------------|-------|
+| F-001 | <name> | <goal> | None | Medium | <owner> |
+| F-002 | <name> | <goal> | F-001 | High | <owner> |
+
+## Feature Detail
+### F-001 <feature name>
+- Scope:
+  - <scope item>
+- Acceptance Criteria:
+  - [ ] <criteria 1>
+  - [ ] <criteria 2>
+- Out of Scope:
+  - <item or None>
+
+### F-002 <feature name>
+- Scope:
+  - <scope item>
+- Acceptance Criteria:
+  - [ ] <criteria 1>
+  - [ ] <criteria 2>
+- Out of Scope:
+  - <item or None>
+
+## Execution Order
+1. F-001
+2. F-002
+
+## Revision Log
+| Version | Date | Changed Feature IDs | Why Revised | Author |
+|---------|------|---------------------|-------------|--------|
+| v1 | <date> | F-001,F-002 | Initial planning baseline | <name> |
+```

@@ -1,0 +1,4 @@
+reports/*
+!reports/loop-review.md
+__pycache__/
+*.pyc

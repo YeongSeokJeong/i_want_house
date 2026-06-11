@@ -1,0 +1,10 @@
+version: 1
+request_interval_seconds: 2
+complexes:
+  - complex_id: sample-apt
+    name: Sample Apartment
+    area_m2: 84.9
+    target_price_krw: 850000000
+    urgent_discount_ratio: 0.12
+    exclude:
+      - basement

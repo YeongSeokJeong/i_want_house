@@ -1,0 +1,46 @@
+name: JeonseLoop
+
+on:
+  schedule:
+    - cron: "0 0,9 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without sending alerts or writing state"
+        required: false
+        default: "true"
+      send:
+        description: "Allow Telegram sends when TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set"
+        required: false
+        default: "false"
+
+concurrency:
+  group: jeonseloop-product-loop
+  cancel-in-progress: false
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: python -m unittest discover -s tests
+      - name: Run JeonseLoop
+        run: |
+          args=""
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.dry_run }}" = "true" ]; then
+            args="$args --dry-run"
+          fi
+          if [ "${{ inputs.send }}" = "true" ]; then
+            args="$args --send"
+          fi
+          python -m jeonseloop.run $args

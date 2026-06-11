@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec Writer"
+  short_description: "Turn features into implementation-ready specs"
+  default_prompt: "Use $spec-writer to turn this feature list into an implementation-ready requirements document."
