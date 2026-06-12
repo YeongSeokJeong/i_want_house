@@ -1,7 +1,10 @@
 {
+  "failure_streak": 0,
+  "health_alert_eligible": false,
   "latest": {
     "counts": {
       "approved_candidates": 1,
+      "data_quality_blocks": 0,
       "invalid_listings": 0,
       "notifications_planned": 1,
       "notifications_sent": 0,
@@ -14,10 +17,13 @@
     "started_at": "2026-06-12T08:59:56+00:00",
     "status": "success"
   },
+  "last_success_at": "2026-06-12T09:00:00+00:00",
+  "last_success_run_id": "sample-run-20260612",
   "runs": [
     {
       "counts": {
         "approved_candidates": 1,
+        "data_quality_blocks": 0,
         "invalid_listings": 0,
         "notifications_planned": 1,
         "notifications_sent": 0,

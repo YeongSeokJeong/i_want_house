@@ -8,6 +8,8 @@ from typing import Any
 from .analyzer import Candidate
 from .validator import ValidationIssue
 
+HEALTH_ALERT_FAILURE_STREAK = 3
+
 
 def load_json(path: Path, default: Any) -> Any:
     if not path.exists():
@@ -33,10 +35,11 @@ def persist_cycle(
     candidates: list[Candidate],
     invalid_records: list[ValidationIssue],
     notified_updates: dict[str, dict[str, Any]],
+    trade_baselines: dict[str, int] | None = None,
 ) -> None:
     for complex_id, records in records_by_complex.items():
         atomic_write_json(data_dir / "listings" / f"{complex_id}.json", {"listings": records})
-        _append_history(data_dir / "history" / f"{complex_id}.json", run_record, records)
+        _append_history(data_dir / "history" / f"{complex_id}.json", run_record, records, trade_baselines or {})
 
     notified_path = data_dir / "state" / "notified.json"
     notified_state = load_json(notified_path, {"notified": {}})
@@ -49,7 +52,11 @@ def persist_cycle(
     health_state = load_json(health_path, {"runs": []})
     runs = list(health_state.get("runs", []))
     runs.append(run_record)
+    health_state["failure_streak"] = 0
+    health_state["health_alert_eligible"] = False
     health_state["latest"] = run_record
+    health_state["last_success_at"] = run_record["finished_at"]
+    health_state["last_success_run_id"] = run_record["run_id"]
     health_state["runs"] = runs[-10:]
     atomic_write_json(health_path, health_state)
 
@@ -61,12 +68,43 @@ def write_failure_health(data_dir: Path, run_record: dict[str, Any]) -> None:
     health_state = load_json(health_path, {"runs": []})
     runs = list(health_state.get("runs", []))
     runs.append(run_record)
+    failure_streak = int(health_state.get("failure_streak", 0)) + 1
+    health_state["failure_streak"] = failure_streak
+    health_state["health_alert_eligible"] = failure_streak >= HEALTH_ALERT_FAILURE_STREAK
     health_state["latest"] = run_record
     health_state["runs"] = runs[-10:]
     atomic_write_json(health_path, health_state)
 
 
-def _append_history(path: Path, run_record: dict[str, Any], records: list[dict[str, Any]]) -> None:
+def load_previous_average_prices(data_dir: Path, complex_ids: list[str] | tuple[str, ...]) -> dict[str, int]:
+    averages: dict[str, int] = {}
+    for complex_id in complex_ids:
+        history = load_json(data_dir / "history" / f"{complex_id}.json", {"history": []})
+        entries = history.get("history", []) if isinstance(history, dict) else []
+        if not isinstance(entries, list):
+            continue
+        for entry in reversed(entries):
+            if not isinstance(entry, dict):
+                continue
+            value = entry.get("average_price_krw")
+            if value is None:
+                continue
+            try:
+                average = int(value)
+            except (TypeError, ValueError):
+                continue
+            if average > 0:
+                averages[complex_id] = average
+                break
+    return averages
+
+
+def _append_history(
+    path: Path,
+    run_record: dict[str, Any],
+    records: list[dict[str, Any]],
+    trade_baselines: dict[str, int],
+) -> None:
     history = load_json(path, {"history": []})
     prices = [int(record["price_krw"]) for record in records]
     entry = {
@@ -75,6 +113,7 @@ def _append_history(path: Path, run_record: dict[str, Any], records: list[dict[s
         "listing_count": len(records),
         "min_price_krw": min(prices) if prices else None,
         "average_price_krw": int(sum(prices) / len(prices)) if prices else None,
+        "recent_trade_price_krw": trade_baselines.get(path.stem),
     }
     history.setdefault("history", []).append(entry)
     atomic_write_json(path, history)

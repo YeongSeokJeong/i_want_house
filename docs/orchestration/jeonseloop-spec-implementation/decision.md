@@ -19,6 +19,10 @@
 | 3 | F-003 | Static dashboard baseline | Implement the dashboard as root-level static HTML/CSS/JS with no build step | GitHub Pages can serve committed files and JSON directly | Dashboard can be opened from repository Pages without package installation | 2026-06-12 |
 | 3 | F-003 | Static dashboard baseline | Render section-local empty/error states from committed JSON files | Future fetch failures should not blank the whole dashboard | Status, chart, and feed sections fail independently | 2026-06-12 |
 | 3 | F-003 | Static dashboard baseline | Commit realistic sample health, history, and listing JSON | F-003 acceptance requires visible last-run status and history state from committed static files | Static tests now prove sample state can render non-empty dashboard sections | 2026-06-12 |
+| 4 | F-004 | Reliability and baseline pricing | Keep live fetcher retry/pacing behind injectable adapter boundaries | Live portal/API adapters are still external and should be testable without network calls | Collector reliability can be verified with deterministic unit tests before live integration | 2026-06-13 |
+| 4 | F-004 | Reliability and baseline pricing | Use recent trade cache averages as the primary baseline and target price as fallback | The spec requires recent transaction baselines while still allowing operation when trade data is absent | Candidate reasons now distinguish `baseline_price` from `target_price` decisions | 2026-06-13 |
+| 4 | F-004 | Reliability and baseline pricing | Treat abnormal listing average jumps as data-quality failures that block urgent alerts and preserve prior snapshots | Sudden average-price shifts can indicate bad data or source changes | Failed runs update health only and do not replace listing/history snapshots | 2026-06-13 |
+| 4 | F-004 | Reliability and baseline pricing | Expose `failure_streak`, last-success metadata, and health alert eligibility in health JSON | Operators and dashboard code need durable failure context across runs | Health state can distinguish isolated failures from repeated failures needing escalation | 2026-06-13 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -85,3 +89,21 @@
   - Browser visual automation could not run because the local in-app browser runtime failed to start under the Windows sandbox.
 - Follow-up Notes:
   - F-004 should enrich the state JSON so the chart can include recent trade baselines and better health details.
+
+## Session 4 F-004 Addendum
+- Feature ID: F-004
+- Feature: Reliability and baseline pricing
+- Decisions:
+  - Added request interval enforcement and retry/backoff scaffolding to the collector with an injectable live fetcher and sleeper.
+  - Added recent-trade cache loading from `data/trades/{complex_id}.json` and persisted the calculated recent-trade baseline into history entries.
+  - Updated candidate classification to approve by recent-trade baseline when present and fall back to configured target price otherwise.
+  - Added previous-average loading, average-price jump detection, and quality-block application so abnormal data shifts hold otherwise approved alerts.
+  - Added health `failure_streak`, `last_success_at`, `last_success_run_id`, and `health_alert_eligible` metadata.
+- Alternatives Considered:
+  - Introduce a real MOLIT API client in F-004: deferred because live API credentials and endpoint behavior are external state, while the feature can be repo-verified through cache loading and adapter boundaries.
+  - Persist snapshots during data-quality failures: rejected because preserving prior known-good JSON is safer when source data may be corrupt.
+- Risks Introduced:
+  - Average-jump threshold is fixed at 15 percent and may need tuning with real listing volatility.
+  - Trade baseline currently averages all cached trade records in the file; rolling six-month filtering should be added with the live trade collector.
+- Follow-up Notes:
+  - F-005 should publish dashboard-friendly candidate/feed data that includes hold/reject reasons, duplicate rationale, and alert-cap overflow.

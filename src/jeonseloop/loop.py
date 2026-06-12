@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .analyzer import approved_candidates, classify_candidates
+from .analyzer import apply_quality_blocks, approved_candidates, classify_candidates, detect_average_price_jumps
 from .collector import collect_listings
 from .notifier import send_candidates
-from .persistence import load_json, persist_cycle, write_failure_health
+from .persistence import load_json, load_previous_average_prices, persist_cycle, write_failure_health
+from .trades import load_trade_baselines
 from .validator import validate_listing_records
 from .watchlist import WatchlistError, load_watchlist
 
@@ -51,9 +52,20 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
             )
         return run_record
 
-    raw_records = collect_listings(watchlist.complexes, options.fixture_path)
+    raw_records = collect_listings(
+        watchlist.complexes,
+        options.fixture_path,
+        request_interval_seconds=watchlist.request_interval_seconds,
+    )
     valid_records, invalid_records = validate_listing_records(raw_records)
-    candidates = classify_candidates(watchlist.complexes, valid_records, notified_state)
+    trade_baselines = load_trade_baselines(options.data_dir, watchlist.complexes)
+    previous_averages = load_previous_average_prices(
+        options.data_dir,
+        tuple(target.complex_id for target in watchlist.complexes),
+    )
+    quality_blocks = detect_average_price_jumps(valid_records, previous_averages)
+    candidates = classify_candidates(watchlist.complexes, valid_records, notified_state, trade_baselines)
+    candidates = apply_quality_blocks(candidates, quality_blocks)
     approved = approved_candidates(candidates)
     notifications = send_candidates(approved, allow_send=options.allow_send and not options.dry_run)
 
@@ -73,6 +85,9 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
     if invalid_records and not any(valid_records.values()):
         status = "failed"
         reason = "all_records_invalid"
+    if quality_blocks:
+        status = "failed"
+        reason = "data_quality_blocked"
 
     run_record = _run_record(
         run_id,
@@ -86,19 +101,24 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
             "approved_candidates": len(approved),
             "notifications_sent": len(sent_by_key),
             "notifications_planned": len(approved),
+            "data_quality_blocks": len(quality_blocks),
         },
     )
 
     if not options.dry_run:
-        persist_cycle(
-            data_dir=options.data_dir,
-            logs_dir=options.logs_dir,
-            run_record=run_record,
-            records_by_complex=valid_records,
-            candidates=candidates,
-            invalid_records=invalid_records,
-            notified_updates=notified_updates,
-        )
+        if quality_blocks:
+            write_failure_health(options.data_dir, run_record)
+        else:
+            persist_cycle(
+                data_dir=options.data_dir,
+                logs_dir=options.logs_dir,
+                run_record=run_record,
+                records_by_complex=valid_records,
+                candidates=candidates,
+                invalid_records=invalid_records,
+                notified_updates=notified_updates,
+                trade_baselines=trade_baselines,
+            )
 
     return run_record
 

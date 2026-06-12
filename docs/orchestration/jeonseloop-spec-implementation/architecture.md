@@ -3,7 +3,7 @@
 ## Task Context
 - Task Name: JeonseLoop spec implementation
 - Task ID: jeonseloop-spec-implementation
-- Last Updated: 2026-06-12
+- Last Updated: 2026-06-13
 
 ## System Context
 - Current Stack: Python 3.12 standard library, `unittest`, GitHub Actions, GitHub Pages static assets, JSON/Markdown repository state.
@@ -23,8 +23,9 @@
 ## Dependency Map
 - `scripts/run-loop.*` -> `src/jeonseloop/run.py` (operator entrypoints invoke one Python CLI).
 - `src/jeonseloop/run.py` -> `loop.py` (CLI delegates one-cycle orchestration).
-- `loop.py` -> `watchlist.py`, `collector.py`, `validator.py`, `analyzer.py`, `notifier.py`, `persistence.py` (Loop Engineering stages).
+- `loop.py` -> `watchlist.py`, `collector.py`, `validator.py`, `analyzer.py`, `trades.py`, `notifier.py`, `persistence.py` (Loop Engineering stages).
 - `persistence.py` -> `data/**/*.json`, `logs/*.md` (state and operator evidence).
+- `trades.py` -> `data/trades/{complex_id}.json` (recent-trade cache baseline for candidate decisions).
 - `notifier.py` -> Telegram Bot API only when explicitly enabled.
 - F-002 depends on F-001 because workflow commands must run real code.
 - F-003 depends on F-001 because dashboard data shape is produced by persistence.
@@ -39,6 +40,12 @@
 - Decision: Treat live external fetchers as adapters added after the foundation.
   - Rationale: The spec prioritizes watchlist-limited collection and safe loop behavior; live scraping/API behavior needs additional legal and reliability checks.
   - Trade-offs: F-001 proves fixture-backed behavior, not real portal availability.
+- Decision: Add retry and pacing at the collector boundary before live adapters.
+  - Rationale: The minimum two-second interval and transient retry semantics should be enforced independently of any specific external source implementation.
+  - Trade-offs: Without a live adapter, end-to-end external fetch behavior remains simulated by tests.
+- Decision: Block urgent alerts when current listing averages shift abnormally from prior history.
+  - Rationale: Sudden average-price jumps can signal source corruption or schema drift, and the hard constraint requires preserving previous JSON state on failure.
+  - Trade-offs: A real market move above the fixed threshold can suppress alerts until reviewed.
 
 ## Risk Register
 | Risk | Severity | Mitigation | Owner |

@@ -1,3 +1,16 @@
 {
-  "trades": []
+  "trades": [
+    {
+      "area_m2": 84.9,
+      "contract_date": "2026-03-15",
+      "floor": 11,
+      "price_krw": 930000000
+    },
+    {
+      "area_m2": 84.9,
+      "contract_date": "2026-05-20",
+      "floor": 9,
+      "price_krw": 920000000
+    }
+  ]
 }
