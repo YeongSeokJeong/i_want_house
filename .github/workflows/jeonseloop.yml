@@ -22,7 +22,7 @@ jobs:
   loop:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -35,12 +35,28 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests
       - name: Run JeonseLoop
+        id: run-loop
         run: |
           args=""
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.dry_run }}" = "true" ]; then
+          dry_run="false"
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.dry_run }}" != "false" ]; then
+            dry_run="true"
             args="$args --dry-run"
           fi
           if [ "${{ inputs.send }}" = "true" ]; then
             args="$args --send"
           fi
           python -m jeonseloop.run $args
+          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+      - name: Persist loop state
+        if: steps.run-loop.outputs.dry_run == 'false'
+        run: |
+          if git diff --quiet -- data logs; then
+            echo "No JeonseLoop state changes to persist."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data logs
+          git commit -m "chore(jeonseloop): persist loop state [skip ci]"
+          git push
