@@ -1,3 +1,34 @@
 {
-  "runs": []
+  "latest": {
+    "counts": {
+      "approved_candidates": 1,
+      "invalid_listings": 0,
+      "notifications_planned": 1,
+      "notifications_sent": 0,
+      "valid_listings": 2,
+      "watched_complexes": 1
+    },
+    "finished_at": "2026-06-12T09:00:00+00:00",
+    "reason": "completed",
+    "run_id": "sample-run-20260612",
+    "started_at": "2026-06-12T08:59:56+00:00",
+    "status": "success"
+  },
+  "runs": [
+    {
+      "counts": {
+        "approved_candidates": 1,
+        "invalid_listings": 0,
+        "notifications_planned": 1,
+        "notifications_sent": 0,
+        "valid_listings": 2,
+        "watched_complexes": 1
+      },
+      "finished_at": "2026-06-12T09:00:00+00:00",
+      "reason": "completed",
+      "run_id": "sample-run-20260612",
+      "started_at": "2026-06-12T08:59:56+00:00",
+      "status": "success"
+    }
+  ]
 }

@@ -16,6 +16,9 @@
 | 2 | F-002 | Product trigger workflow | Scheduled workflow runs are non-dry-run state persistence runs, while manual dispatch remains dry-run by default | Product-loop scheduled execution must produce state for dashboard/health, but manual UI runs should remain safe by default | Scheduled runs can commit `data` and `logs`; manual writes require `dry_run=false` | 2026-06-12 |
 | 2 | F-002 | Product trigger workflow | Keep Telegram sends behind the explicit workflow `send` input | Repository hard constraint requires `--send` before Telegram delivery | Scheduled runs persist state but do not send Telegram unless a future explicit schedule policy is added | 2026-06-12 |
 | 2 | F-002 | Product trigger workflow | Use one concurrency group with `cancel-in-progress: false` | This prevents concurrent state writes without cancelling an active product loop midway | Later queued runs wait instead of racing JSON commits | 2026-06-12 |
+| 3 | F-003 | Static dashboard baseline | Implement the dashboard as root-level static HTML/CSS/JS with no build step | GitHub Pages can serve committed files and JSON directly | Dashboard can be opened from repository Pages without package installation | 2026-06-12 |
+| 3 | F-003 | Static dashboard baseline | Render section-local empty/error states from committed JSON files | Future fetch failures should not blank the whole dashboard | Status, chart, and feed sections fail independently | 2026-06-12 |
+| 3 | F-003 | Static dashboard baseline | Commit realistic sample health, history, and listing JSON | F-003 acceptance requires visible last-run status and history state from committed static files | Static tests now prove sample state can render non-empty dashboard sections | 2026-06-12 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -64,3 +67,21 @@
   - GitHub Actions push permissions depend on repository settings and remain external state.
 - Follow-up Notes:
   - F-003 can now rely on committed JSON state shapes for dashboard rendering.
+
+## Session 3 F-003 Addendum
+- Feature ID: F-003
+- Feature: Static dashboard baseline
+- Decisions:
+  - Added `index.html`, `assets/dashboard.css`, and `assets/dashboard.js` as a no-build dashboard.
+  - Fetches `data/state/health.json`, `data/history/sample-apt.json`, and `data/listings/sample-apt.json`.
+  - Uses a canvas line chart when history exists and empty/error states when JSON is missing or empty.
+  - Added static contract tests for asset references, JSON fetch paths, section-local error states, and committed sample data.
+  - Guarded chart rendering so a history file without numeric price points shows an empty state instead of invalid canvas values.
+- Alternatives Considered:
+  - Add a bundled charting dependency: rejected because the repo has no frontend build or package manifest and a lightweight canvas chart is sufficient for the baseline.
+  - Generate dashboard HTML from Python during each loop: deferred because F-003 requires static JSON rendering without a build step.
+- Risks Introduced:
+  - Complex discovery is currently hardcoded to `sample-apt`; a future feature should emit dashboard metadata from the watchlist.
+  - Browser visual automation could not run because the local in-app browser runtime failed to start under the Windows sandbox.
+- Follow-up Notes:
+  - F-004 should enrich the state JSON so the chart can include recent trade baselines and better health details.

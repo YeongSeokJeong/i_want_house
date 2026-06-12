@@ -1,3 +1,18 @@
 {
-  "history": []
+  "history": [
+    {
+      "average_price_krw": 890000000,
+      "finished_at": "2026-06-11T09:00:00+00:00",
+      "listing_count": 2,
+      "min_price_krw": 870000000,
+      "run_id": "sample-run-20260611"
+    },
+    {
+      "average_price_krw": 870000000,
+      "finished_at": "2026-06-12T09:00:00+00:00",
+      "listing_count": 2,
+      "min_price_krw": 830000000,
+      "run_id": "sample-run-20260612"
+    }
+  ]
 }

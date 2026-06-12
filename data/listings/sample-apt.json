@@ -1,3 +1,29 @@
 {
-  "listings": []
+  "listings": [
+    {
+      "area_m2": 84.9,
+      "building": "101",
+      "complex_id": "sample-apt",
+      "decision_reason": "target_price",
+      "description": "Fixture listing below the target price",
+      "floor": 12,
+      "link": "https://example.invalid/listing-1",
+      "listing_id": "listing-1",
+      "posted_at": "2026-06-11",
+      "price_krw": 830000000,
+      "title": "Sample low price listing"
+    },
+    {
+      "area_m2": 84.9,
+      "building": "102",
+      "complex_id": "sample-apt",
+      "description": "Fixture listing above the target price",
+      "floor": 8,
+      "link": "https://example.invalid/listing-2",
+      "listing_id": "listing-2",
+      "posted_at": "2026-06-11",
+      "price_krw": 910000000,
+      "title": "Sample high price listing"
+    }
+  ]
 }
