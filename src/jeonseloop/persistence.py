@@ -90,7 +90,12 @@ def _append_criteria_log(
     if path.exists():
         lines = path.read_text(encoding="utf-8").splitlines()
     else:
-        lines = ["# Criteria Log", "", "| time | complex_id | listing_key | decision | reason | price_krw |", "|---|---|---|---|---|---|"]
+        lines = [
+            "# Criteria Log",
+            "",
+            "| time | complex_id | listing_key | decision | reason | price_krw |",
+            "|---|---|---|---|---|---|",
+        ]
 
     for candidate in candidates:
         lines.append(

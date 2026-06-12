@@ -1,4 +1,4 @@
-"""JeonseLoop product-loop skeleton."""
+"""JeonseLoop product loop."""
 
 __all__ = ["__version__"]
 

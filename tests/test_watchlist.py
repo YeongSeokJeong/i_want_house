@@ -26,6 +26,14 @@ class WatchlistTests(unittest.TestCase):
             with self.assertRaises(WatchlistError):
                 load_watchlist(path)
 
+    def test_rejects_request_interval_below_minimum(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "watchlist.yaml"
+            path.write_text("request_interval_seconds: 1\ncomplexes: []\n", encoding="utf-8")
+
+            with self.assertRaises(WatchlistError):
+                load_watchlist(path)
+
     def test_empty_watchlist_is_valid_but_empty(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "watchlist.yaml"

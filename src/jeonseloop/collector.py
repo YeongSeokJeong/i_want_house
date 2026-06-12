@@ -11,12 +11,7 @@ def collect_listings(
     targets: tuple[WatchTarget, ...],
     fixture_path: Path | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Return listing snapshots limited to watchlist complexes.
-
-    The first implementation intentionally avoids live portal calls. A fixture
-    file can supply records for tests and dry-runs; otherwise each watched
-    complex returns an empty result set.
-    """
+    """Return listing snapshots limited to watchlist complexes."""
 
     result = {target.complex_id: [] for target in targets}
     if fixture_path is None:
