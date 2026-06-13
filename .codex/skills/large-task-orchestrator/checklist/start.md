@@ -7,8 +7,8 @@ Exit criteria for initializing a large multi-session task.
 - [ ] Task name is confirmed with user for `./docs/orchestration/<task-name>/`.
 - [ ] If start input is sparse (for example only `/large-task-orchestrator start <task-name>`), requirement interview is completed before deep code reading.
 - [ ] Interview output includes explicit in-scope/out-of-scope boundaries, constraints, and testable acceptance criteria.
-- [ ] Related-document discovery for the new requirement is run from `graphify-out/GRAPH_REPORT.md` and `graphify-out/graph.json`.
-- [ ] If graphify artifacts are missing/stale, `/graphify . --update` refresh is requested and temporary limitations are recorded.
+- [ ] Related wiki discovery for the new requirement is run from `docs/wiki/` using the `wiki-write` routing model.
+- [ ] Relevant wiki pages, decisions, reusable rules, and wiki gaps are recorded before feature slicing.
 - [ ] Large task is decomposed into discrete functional features with stable IDs (`F-001..F-00N`).
 - [ ] Every feature has explicit acceptance criteria.
 - [ ] Architecture review includes stack fit, boundaries, dependencies, and major risks.

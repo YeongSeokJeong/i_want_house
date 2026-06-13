@@ -12,8 +12,11 @@ Use this workflow for:
 - `../references/decision-schema.md`
 - `../references/architecture-schema.md`
 - `../checklist/start.md`
-- `../../../../graphify-out/GRAPH_REPORT.md` (if present)
-- `../../../../graphify-out/graph.json` (if present)
+- [Wiki Write Skill](../../wiki-write/SKILL.md)
+- `../../../../docs/wiki/SCHEMA.md` (if present)
+- `../../../../docs/wiki/init.md` (if present)
+- `../../../../docs/wiki/index.md` (if present)
+- `../../../../docs/wiki/decisions.md` (if present)
 - [Clarify Agent](../../../agents/clarify.agent.md)
 - [Brainstorm Agent](../../../agents/brainstorm.agent.md)
 - [PM Agent](../../../agents/pm.agent.md)
@@ -44,14 +47,14 @@ This workflow owns agent usage for `/large-task-orchestrator start <task-name>`.
 | **Rules** | Ask 1-5 high-impact questions, then summarize in-scope/out-of-scope, constraints, and testable acceptance criteria. Do not start deep repository code reading before this stage is complete. |
 | **Output** | Interviewed requirement brief (scope + constraints + initial acceptance criteria) |
 
-### Stage 2: Related Document Discovery (Graphify-first)
+### Stage 2: Related Wiki Discovery (wiki-write)
 
 | | |
 |---|---|
 | **Agent** | [Brainstorm Agent](../../../agents/brainstorm.agent.md) |
 | **Goal** | Find requirement-related docs/decisions before feature slicing |
-| **Rules** | Inspect `graphify-out/GRAPH_REPORT.md` and `graphify-out/graph.json` first, then produce an evidence list of related docs and relevance notes. If graphify artifacts are missing/stale, request `/graphify . --update` and note the temporary limitation. |
-| **Output** | Related-document evidence list grounded in graphify outputs |
+| **Rules** | Use the `wiki-write` skill routing model and inspect `docs/wiki/SCHEMA.md`, `docs/wiki/init.md`, `docs/wiki/index.md`, `docs/wiki/decisions.md`, and relevant `docs/wiki/**` pages before planning. Produce an evidence list of related docs, decisions, reusable rules, and wiki gaps. If durable knowledge should be added or updated, record the proposed wiki target path and defer actual wiki edits to the appropriate orchestration feature or closeout unless the user explicitly asks to update it now. |
+| **Output** | Related wiki evidence list with relevance notes and proposed wiki update targets |
 
 ### Stage 3: Brainstorm
 
@@ -117,7 +120,7 @@ Output Session 1 summary to chat with:
 ## Success Criteria
 
 - Interview-first clarification is completed when start input is sparse/ambiguous.
-- Related-document discovery is executed from graphify outputs (or graphify refresh is requested when missing/stale).
+- Related wiki discovery is executed from `docs/wiki/` using the `wiki-write` routing model.
 - Features are decomposed into independent functional units.
 - Every feature has a stable feature ID and acceptance criteria.
 - Architecture review is complete and documented with feature-ID mapping.
