@@ -12,6 +12,7 @@
 | 1 | PLAN | Planning | Preserve existing public functions as compatibility wrappers | Tests and entrypoints may depend on module-level APIs, and behavior change is out of scope | Allows internal OOP migration without breaking external callers | 2026-06-13 |
 | 2 | F-001 | Domain and service object boundaries | Add service/repository classes inside existing modules before changing loop orchestration | This creates stable OOP seams without changing command-line behavior or persisted data shapes | F-002 can compose explicit service objects rather than relying only on module-level functions | 2026-06-13 |
 | 3 | F-002 | Object-oriented loop orchestration | Introduce `LoopCoordinator` as the application-level one-cycle coordinator | The product loop should compose explicit service objects and keep CLI wrappers thin | Core Trigger/Discover/Execute/Verify/Persist/Escalate flow is now object-oriented while preserving `run_cycle` compatibility | 2026-06-13 |
+| 4 | F-003 | Architecture QA and closeout | Record durable architecture note in the JeonseLoop wiki overview | The coordinator/service boundary is now durable product-loop architecture knowledge | Future work can find the OOP boundary without re-reading implementation diffs | 2026-06-13 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -59,3 +60,18 @@
   - The old private `_run_record` helper remains in `loop.py` and should be reviewed in F-003 for removal if unused.
 - Follow-up Notes:
   - F-003 should perform cleanup and a final architecture review before closeout.
+
+## Session 4
+- Feature ID: F-003
+- Feature: Architecture QA and closeout
+- Decisions:
+  - Removed the unused module-level `_run_record` helper from `loop.py`; run record construction now lives only on `LoopCoordinator`.
+  - Added a concise architecture note to `docs/wiki/domains/jeonseloop/overview.md`.
+  - Created `docs/handoff/src-oop-refactor-final.md` for closeout.
+- Alternatives Considered:
+  - Remove all module-level compatibility wrappers: rejected because wrappers are intentional compatibility boundaries for CLI/tests and low-risk migration.
+  - Create a separate wiki decision document: rejected because the change is an agent architecture note, not a human product decision.
+- Risks Introduced:
+  - None.
+- Follow-up Notes:
+  - Remaining uncommitted `reports/loop-review.md` change was pre-existing/unrelated and intentionally left untouched.

@@ -224,23 +224,5 @@ def run_failure_health(options: LoopOptions, error: WatchlistError) -> dict[str,
     return LoopCoordinator(options).record_watchlist_failure(error)
 
 
-def _run_record(
-    run_id: str,
-    started_at: str,
-    *,
-    status: str,
-    reason: str,
-    counts: dict[str, int],
-) -> dict[str, Any]:
-    return {
-        "run_id": run_id,
-        "started_at": started_at,
-        "finished_at": _now(),
-        "status": status,
-        "reason": reason,
-        "counts": counts,
-    }
-
-
 def _now() -> str:
     return datetime.now(tz=UTC).replace(microsecond=0).isoformat()

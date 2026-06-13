@@ -55,5 +55,5 @@
 |------|----------|------------|-------|
 | Refactor changes persisted JSON shapes | High | Preserve dictionary contracts and run fixture-backed write tests | Backend Agent |
 | Dry-run accidentally writes state or sends alerts | High | Keep send/write gates test-covered before and after coordinator refactor | Backend Agent |
-| Public wrappers hide incomplete OOP migration | Medium | Track remaining procedural orchestration in F-003 QA | QA Agent |
+| Public wrappers hide incomplete OOP migration | Medium | Accepted as compatibility wrappers; coordinator and service classes are the primary architecture boundary | QA Agent |
 | Missing workflow `.agent.md` files weaken lifecycle evidence | Low | Record the gap and use available same-role `.toml` specs | Codex |

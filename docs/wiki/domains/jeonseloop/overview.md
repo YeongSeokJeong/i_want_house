@@ -19,5 +19,8 @@ JeonseLoop는 관심 아파트 단지의 전세 매물, 실거래 기준선, 후
 - `jeonseloop-spec.md`
 - `docs/orchestration/jeonseloop-spec-implementation/`
 
+## 아키텍처 메모
+`src/jeonseloop/`의 제품 루프는 `LoopCoordinator`가 한 사이클을 조율하고, 수집(`ListingCollector`), 검증(`ListingValidator`), 후보 판정(`CandidateAnalyzer`), 상태 저장(`LoopStateRepository`), 거래 기준선(`TradeBaselineRepository`), 알림(`NotificationService`), LLM 검수(`CandidateReviewService`), 기준 제안(`CriteriaSuggestionService`) 객체를 명시적으로 조합하는 구조를 기준으로 한다. 기존 module-level 함수들은 CLI와 테스트 호환을 위한 얇은 wrapper로 유지한다.
+
 ## Agent note
 외부 서비스 연결 상태는 저장소만으로 증명하지 않는다. GitHub Secrets, 실제 Actions 실행 이력, Telegram 실전송, 외부 포털/API 응답은 별도 운영 환경 확인 대상으로 남긴다.
