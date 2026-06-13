@@ -89,14 +89,16 @@ async function renderFeed(complexId) {
   const count = document.getElementById("feedCount");
 
   try {
-    const payload = await fetchJson(`data/listings/${complexId}.json`);
-    const listings = Array.isArray(payload.listings) ? payload.listings : [];
-    const sorted = listings
+    const payload = await fetchJson("data/state/urgent-feed.json");
+    const feedItems = Array.isArray(payload.items) ? payload.items : [];
+    const sorted = feedItems
+      .filter((item) => item.complex_id === complexId)
       .filter((item) => Number(item.price_krw) > 0)
-      .sort((a, b) => Number(a.price_krw) - Number(b.price_krw))
+      .sort((a, b) => Number(b.alert_planned) - Number(a.alert_planned) || Number(a.price_krw) - Number(b.price_krw))
       .slice(0, 10);
 
-    count.textContent = `${sorted.length}건`;
+    const overflow = Number(payload.alert_cap_overflow || 0);
+    count.textContent = overflow > 0 ? `${sorted.length}건 +${overflow}` : `${sorted.length}건`;
     if (sorted.length === 0) {
       list.replaceChildren(emptyNode("최근 후보 데이터가 아직 없습니다."));
       return;
@@ -196,6 +198,12 @@ function feedItem(item) {
   );
   if (item.decision_reason) {
     meta.append(span(item.decision_reason));
+  }
+  if (item.reason) {
+    meta.append(span(item.reason));
+  }
+  if (item.decision) {
+    meta.append(span(item.decision));
   }
 
   node.append(title, meta);

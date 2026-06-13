@@ -23,6 +23,10 @@
 | 4 | F-004 | Reliability and baseline pricing | Use recent trade cache averages as the primary baseline and target price as fallback | The spec requires recent transaction baselines while still allowing operation when trade data is absent | Candidate reasons now distinguish `baseline_price` from `target_price` decisions | 2026-06-13 |
 | 4 | F-004 | Reliability and baseline pricing | Treat abnormal listing average jumps as data-quality failures that block urgent alerts and preserve prior snapshots | Sudden average-price shifts can indicate bad data or source changes | Failed runs update health only and do not replace listing/history snapshots | 2026-06-13 |
 | 4 | F-004 | Reliability and baseline pricing | Expose `failure_streak`, last-success metadata, and health alert eligibility in health JSON | Operators and dashboard code need durable failure context across runs | Health state can distinguish isolated failures from repeated failures needing escalation | 2026-06-13 |
+| 5 | F-005 | Candidate quality controls | Evaluate watchlist exclusions before approval | Exclusion terms must block alerts even when price criteria pass | Excluded listings appear as rejected candidates with queryable reasons | 2026-06-13 |
+| 5 | F-005 | Candidate quality controls | Represent equivalent duplicates as held candidates instead of silently dropping them | Operators need to inspect duplicate rationale later in logs/feed data | One representative remains eligible while duplicate reasons stay queryable | 2026-06-13 |
+| 5 | F-005 | Candidate quality controls | Publish `data/state/urgent-feed.json` as the dashboard feed contract | Raw listing snapshots do not include enough decision context for review | Dashboard can render approved, rejected, held, and capped candidate states from one JSON file | 2026-06-13 |
+| 5 | F-005 | Candidate quality controls | Count all approved candidates separately from capped planned notifications | Alert cap overflow must be visible without sending more than five Telegram alerts | Health counts expose `alert_cap_overflow` and feed items mark `alert_planned` | 2026-06-13 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -107,3 +111,21 @@
   - Trade baseline currently averages all cached trade records in the file; rolling six-month filtering should be added with the live trade collector.
 - Follow-up Notes:
   - F-005 should publish dashboard-friendly candidate/feed data that includes hold/reject reasons, duplicate rationale, and alert-cap overflow.
+
+## Session 5 F-005 Addendum
+- Feature ID: F-005
+- Feature: Candidate quality controls
+- Decisions:
+  - Added exclusion matching against title, description, building, floor, and link text before price approval.
+  - Changed duplicate handling so equivalent listings with the same complex, building, floor, area, and price keep one representative and record duplicate holds.
+  - Added capped notification planning with `alert_cap_overflow` while preserving the hard limit of five planned Telegram alerts.
+  - Persisted `data/state/urgent-feed.json` with decision, reason, price, listing context, and `alert_planned` for dashboard review.
+  - Updated the static dashboard feed section to read `urgent-feed.json` and show decision/reason metadata.
+- Alternatives Considered:
+  - Continue using `data/listings/{complex_id}.json` as the dashboard feed: rejected because raw snapshots cannot represent rejects, holds, duplicate rationale, or alert-cap overflow clearly.
+  - Drop duplicate records entirely during dedupe: rejected because F-005 requires decision reasons to remain queryable.
+- Risks Introduced:
+  - Exclusion matching is simple substring matching and may need field-specific rules for real portal text.
+  - Duplicate representative selection follows current input order after listing-key dedupe; a future source adapter may need a stronger broker/source priority rule.
+- Follow-up Notes:
+  - F-006 can use the criteria log and urgent feed as the input corpus for optional LLM review and improvement suggestions.

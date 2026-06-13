@@ -66,7 +66,9 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
     quality_blocks = detect_average_price_jumps(valid_records, previous_averages)
     candidates = classify_candidates(watchlist.complexes, valid_records, notified_state, trade_baselines)
     candidates = apply_quality_blocks(candidates, quality_blocks)
+    approved_total = len([candidate for candidate in candidates if candidate.decision == "approve"])
     approved = approved_candidates(candidates)
+    alert_cap_overflow = max(approved_total - len(approved), 0)
     notifications = send_candidates(approved, allow_send=options.allow_send and not options.dry_run)
 
     sent_by_key = {result.listing_key: result for result in notifications if result.sent}
@@ -98,10 +100,11 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
             "watched_complexes": len(watchlist.complexes),
             "valid_listings": sum(len(records) for records in valid_records.values()),
             "invalid_listings": len(invalid_records),
-            "approved_candidates": len(approved),
+            "approved_candidates": approved_total,
             "notifications_sent": len(sent_by_key),
             "notifications_planned": len(approved),
             "data_quality_blocks": len(quality_blocks),
+            "alert_cap_overflow": alert_cap_overflow,
         },
     )
 

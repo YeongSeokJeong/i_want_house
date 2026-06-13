@@ -26,6 +26,7 @@
 - `loop.py` -> `watchlist.py`, `collector.py`, `validator.py`, `analyzer.py`, `trades.py`, `notifier.py`, `persistence.py` (Loop Engineering stages).
 - `persistence.py` -> `data/**/*.json`, `logs/*.md` (state and operator evidence).
 - `trades.py` -> `data/trades/{complex_id}.json` (recent-trade cache baseline for candidate decisions).
+- `persistence.py` -> `data/state/urgent-feed.json` (dashboard-friendly candidate decision feed).
 - `notifier.py` -> Telegram Bot API only when explicitly enabled.
 - F-002 depends on F-001 because workflow commands must run real code.
 - F-003 depends on F-001 because dashboard data shape is produced by persistence.
@@ -46,6 +47,12 @@
 - Decision: Block urgent alerts when current listing averages shift abnormally from prior history.
   - Rationale: Sudden average-price jumps can signal source corruption or schema drift, and the hard constraint requires preserving previous JSON state on failure.
   - Trade-offs: A real market move above the fixed threshold can suppress alerts until reviewed.
+- Decision: Persist candidate decisions in a dedicated urgent-feed JSON.
+  - Rationale: Dashboard review needs approved, held, rejected, duplicate, exclusion, and alert-cap context that raw listings cannot express.
+  - Trade-offs: Feed consumers must handle a second state file in addition to listing snapshots.
+- Decision: Apply quality controls before notification planning.
+  - Rationale: Exclusions and duplicate holds should never consume notification slots or trigger Telegram sends.
+  - Trade-offs: More candidate records are retained for observability even when only a subset can alert.
 
 ## Risk Register
 | Risk | Severity | Mitigation | Owner |

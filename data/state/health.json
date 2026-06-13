@@ -4,6 +4,7 @@
   "latest": {
     "counts": {
       "approved_candidates": 1,
+      "alert_cap_overflow": 0,
       "data_quality_blocks": 0,
       "invalid_listings": 0,
       "notifications_planned": 1,
@@ -23,6 +24,7 @@
     {
       "counts": {
         "approved_candidates": 1,
+        "alert_cap_overflow": 0,
         "data_quality_blocks": 0,
         "invalid_listings": 0,
         "notifications_planned": 1,

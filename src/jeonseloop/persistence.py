@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from .analyzer import Candidate
+from .analyzer import Candidate, approved_candidates
 from .validator import ValidationIssue
 
 HEALTH_ALERT_FAILURE_STREAK = 3
@@ -60,6 +60,7 @@ def persist_cycle(
     health_state["runs"] = runs[-10:]
     atomic_write_json(health_path, health_state)
 
+    _write_urgent_feed(data_dir / "state" / "urgent-feed.json", run_record, candidates)
     _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_record["finished_at"])
 
 
@@ -117,6 +118,36 @@ def _append_history(
     }
     history.setdefault("history", []).append(entry)
     atomic_write_json(path, history)
+
+
+def _write_urgent_feed(path: Path, run_record: dict[str, Any], candidates: list[Candidate]) -> None:
+    planned_keys = {candidate.listing_key for candidate in approved_candidates(candidates)}
+    payload = {
+        "run_id": run_record["run_id"],
+        "generated_at": run_record["finished_at"],
+        "alert_limit": 5,
+        "alert_cap_overflow": run_record.get("counts", {}).get("alert_cap_overflow", 0),
+        "items": [_feed_item(candidate, candidate.listing_key in planned_keys) for candidate in candidates],
+    }
+    atomic_write_json(path, payload)
+
+
+def _feed_item(candidate: Candidate, alert_planned: bool) -> dict[str, Any]:
+    listing = candidate.listing
+    return {
+        "complex_id": candidate.complex_id,
+        "listing_key": candidate.listing_key,
+        "decision": candidate.decision,
+        "reason": candidate.reason,
+        "price_krw": candidate.price_krw,
+        "alert_planned": alert_planned,
+        "title": listing.get("title"),
+        "description": listing.get("description"),
+        "building": listing.get("building"),
+        "floor": listing.get("floor"),
+        "area_m2": listing.get("area_m2"),
+        "link": listing.get("link"),
+    }
 
 
 def _append_criteria_log(
