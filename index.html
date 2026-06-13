@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JeonseLoop</title>
+    <link rel="stylesheet" href="assets/dashboard.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">JeonseLoop</p>
+        <h1>급매 감시 대시보드</h1>
+      </div>
+      <div id="statusBadge" class="status-badge status-unknown">상태 확인 중</div>
+    </header>
+
+    <main class="layout">
+      <section class="panel status-panel" aria-labelledby="statusTitle">
+        <div class="section-heading">
+          <h2 id="statusTitle">마지막 실행</h2>
+          <span id="lastRunTime" class="muted">-</span>
+        </div>
+        <dl class="metric-grid">
+          <div>
+            <dt>감시 단지</dt>
+            <dd id="watchedComplexes">-</dd>
+          </div>
+          <div>
+            <dt>정상 매물</dt>
+            <dd id="validListings">-</dd>
+          </div>
+          <div>
+            <dt>후보</dt>
+            <dd id="approvedCandidates">-</dd>
+          </div>
+          <div>
+            <dt>알림</dt>
+            <dd id="notificationsSent">-</dd>
+          </div>
+        </dl>
+        <p id="statusReason" class="panel-note">상태 파일을 불러오는 중입니다.</p>
+      </section>
+
+      <section class="panel chart-panel" aria-labelledby="chartTitle">
+        <div class="section-heading">
+          <h2 id="chartTitle">시세 추이</h2>
+          <select id="complexSelect" aria-label="단지 선택"></select>
+        </div>
+        <div class="chart-shell">
+          <canvas id="historyChart" width="920" height="360" aria-label="시세 추이 차트"></canvas>
+          <div id="chartEmpty" class="empty-state" hidden>히스토리 데이터가 아직 없습니다.</div>
+        </div>
+      </section>
+
+      <section class="panel feed-panel" aria-labelledby="feedTitle">
+        <div class="section-heading">
+          <h2 id="feedTitle">최근 급매 후보</h2>
+          <span id="feedCount" class="muted">0건</span>
+        </div>
+        <div id="feedList" class="feed-list"></div>
+      </section>
+    </main>
+
+    <script src="assets/dashboard.js" defer></script>
+  </body>
+</html>

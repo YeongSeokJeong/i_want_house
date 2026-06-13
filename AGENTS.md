@@ -14,12 +14,17 @@ It persists JSON/Markdown state for a GitHub Pages dashboard while practicing th
 
 ## Global HARD Constraints
 - Do not send Telegram alerts unless `--send` is explicitly passed and `TELEGRAM_BOT_TOKEN` plus `TELEGRAM_CHAT_ID` are set.
-- Keep scheduled/product execution separate from `codex exec` development inspection.
+- Source code development work MUST follow the `large-task-orchestrator` lifecycle; route implementation through `/large-task-orchestrator start|next|revise|status|done <task-name>`, maintain the required `docs/orchestration/<task-name>/` continuity files, and do not proceed with source code changes outside that workflow. Documentation-only, agent-instruction, configuration, and operator-guidance updates do not require `large-task-orchestrator` unless the user explicitly requests it.
+- Keep runtime secrets and operator-specific environment values in a local untracked `.env` file for local operation. Do not hard-code tokens, chat IDs, API keys, or machine-specific paths in AGENTS.md, source files, workflow definitions, or committed docs.
+- For GitHub Actions operation, mirror required `.env` values into GitHub Secrets rather than committing them; local `.env` is only for local shell/session loading.
+- When adding or changing environment variables, update `.env.example` with placeholder names only; never put real secret values in that file.
+- Communicate with the user in Korean unless the user explicitly requests another language.
+- Write user-facing documentation files under `docs/` in Korean. Write internal reasoning and continuity artifacts in English, including plans, progress logs, decision records, architecture notes, review reports, and handoff reasoning; when a file under `docs/` is one of these reasoning artifacts, the reasoning-artifact language rule takes precedence.
 - Preserve previous JSON state on failure; write state through validate-before-replace paths.
-- Treat external scheduler registration, GitHub Secrets, live Telegram delivery, and portal/API availability as external state, not repo-verifiable facts.
 
 ## Topic Document Links
 - Product requirements: `jeonseloop-spec.md`
+- Loop Engineering routing pattern: `docs/wiki/rules/workflow/loop-engineering-routing.md`
 - Development inspection loop: `docs/wiki/rules/workflow/development-automation-loop.md`
 - Product trigger workflow: `.github/workflows/jeonseloop.yml`
 - Product entrypoints: `scripts/run-loop.ps1`, `scripts/run-loop.sh`, `src/jeonseloop/run.py`
