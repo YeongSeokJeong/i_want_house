@@ -36,37 +36,54 @@ class LlmReviewConfig:
 CandidateReviewer = Callable[[Candidate], str]
 
 
+class CandidateReviewService:
+    def __init__(
+        self,
+        *,
+        config: LlmReviewConfig | None = None,
+        reviewer: CandidateReviewer | None = None,
+    ) -> None:
+        self._config = config if config is not None else LlmReviewConfig.from_env()
+        self._reviewer = reviewer
+
+    def apply(self, candidates: Iterable[Candidate]) -> list[Candidate]:
+        candidate_list = list(candidates)
+        if not self._config.enabled:
+            return candidate_list
+
+        review = self._reviewer if self._reviewer is not None else AnthropicCandidateReviewer(self._config).review
+        reviewed: list[Candidate] = []
+        for candidate in candidate_list:
+            if candidate.decision != "approve":
+                reviewed.append(candidate)
+                continue
+            try:
+                result = self.parse_response(review(candidate))
+            except ReviewError:
+                reviewed.append(_replace_decision(candidate, "hold", "llm_invalid_response"))
+                continue
+            except Exception as exc:  # pragma: no cover - live network path
+                reviewed.append(_replace_decision(candidate, "hold", f"llm_review_error:{type(exc).__name__}"))
+                continue
+
+            if result["decision"] == "approve":
+                reviewed.append(candidate)
+            else:
+                reviewed.append(_replace_decision(candidate, result["decision"], f"llm_{result['reason']}"))
+        return reviewed
+
+    @staticmethod
+    def parse_response(text: str) -> dict[str, str]:
+        return parse_review_response(text)
+
+
 def apply_llm_review(
     candidates: Iterable[Candidate],
     *,
     config: LlmReviewConfig | None = None,
     reviewer: CandidateReviewer | None = None,
 ) -> list[Candidate]:
-    review_config = config if config is not None else LlmReviewConfig.from_env()
-    candidate_list = list(candidates)
-    if not review_config.enabled:
-        return candidate_list
-
-    review = reviewer if reviewer is not None else AnthropicCandidateReviewer(review_config).review
-    reviewed: list[Candidate] = []
-    for candidate in candidate_list:
-        if candidate.decision != "approve":
-            reviewed.append(candidate)
-            continue
-        try:
-            result = parse_review_response(review(candidate))
-        except ReviewError:
-            reviewed.append(_replace_decision(candidate, "hold", "llm_invalid_response"))
-            continue
-        except Exception as exc:  # pragma: no cover - live network path
-            reviewed.append(_replace_decision(candidate, "hold", f"llm_review_error:{type(exc).__name__}"))
-            continue
-
-        if result["decision"] == "approve":
-            reviewed.append(candidate)
-        else:
-            reviewed.append(_replace_decision(candidate, result["decision"], f"llm_{result['reason']}"))
-    return reviewed
+    return CandidateReviewService(config=config, reviewer=reviewer).apply(candidates)
 
 
 def parse_review_response(text: str) -> dict[str, str]:
