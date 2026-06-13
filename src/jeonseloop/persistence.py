@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .analyzer import Candidate, approved_candidates
+from .suggestions import write_criteria_suggestions
 from .validator import ValidationIssue
 
 HEALTH_ALERT_FAILURE_STREAK = 3
@@ -62,6 +63,7 @@ def persist_cycle(
 
     _write_urgent_feed(data_dir / "state" / "urgent-feed.json", run_record, candidates)
     _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_record["finished_at"])
+    write_criteria_suggestions(logs_dir=logs_dir, data_dir=data_dir, generated_at=run_record["finished_at"])
 
 
 def write_failure_health(data_dir: Path, run_record: dict[str, Any]) -> None:

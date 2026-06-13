@@ -27,6 +27,8 @@
 - `persistence.py` -> `data/**/*.json`, `logs/*.md` (state and operator evidence).
 - `trades.py` -> `data/trades/{complex_id}.json` (recent-trade cache baseline for candidate decisions).
 - `persistence.py` -> `data/state/urgent-feed.json` (dashboard-friendly candidate decision feed).
+- `review.py` -> Anthropic Messages API only when explicitly enabled with environment secrets.
+- `suggestions.py` -> `logs/criteria-log.md`, `data/state/criteria-suggestions.json` (human-approved improvement suggestions).
 - `notifier.py` -> Telegram Bot API only when explicitly enabled.
 - F-002 depends on F-001 because workflow commands must run real code.
 - F-003 depends on F-001 because dashboard data shape is produced by persistence.
@@ -53,6 +55,12 @@
 - Decision: Apply quality controls before notification planning.
   - Rationale: Exclusions and duplicate holds should never consume notification slots or trigger Telegram sends.
   - Trade-offs: More candidate records are retained for observability even when only a subset can alert.
+- Decision: Keep optional LLM review disabled by default and fail closed.
+  - Rationale: The loop must remain safe without secrets, and malformed secondary review output must not approve alerts.
+  - Trade-offs: Live LLM behavior is only exercised in environments with explicit opt-in and secrets.
+- Decision: Generate improvement suggestions as review artifacts, not configuration edits.
+  - Rationale: The operator must approve changes to thresholds or exclusions before `config/watchlist.yaml` changes.
+  - Trade-offs: Suggestions require a separate manual step before they affect future loop decisions.
 
 ## Risk Register
 | Risk | Severity | Mitigation | Owner |

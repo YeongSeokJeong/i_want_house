@@ -27,6 +27,9 @@
 | 5 | F-005 | Candidate quality controls | Represent equivalent duplicates as held candidates instead of silently dropping them | Operators need to inspect duplicate rationale later in logs/feed data | One representative remains eligible while duplicate reasons stay queryable | 2026-06-13 |
 | 5 | F-005 | Candidate quality controls | Publish `data/state/urgent-feed.json` as the dashboard feed contract | Raw listing snapshots do not include enough decision context for review | Dashboard can render approved, rejected, held, and capped candidate states from one JSON file | 2026-06-13 |
 | 5 | F-005 | Candidate quality controls | Count all approved candidates separately from capped planned notifications | Alert cap overflow must be visible without sending more than five Telegram alerts | Health counts expose `alert_cap_overflow` and feed items mark `alert_planned` | 2026-06-13 |
+| 6 | F-006 | Optional LLM review and improvement suggestions | Keep LLM review disabled unless both `JEONSELOOP_LLM_REVIEW` and `ANTHROPIC_API_KEY` are present | The spec and hard constraints require safe default operation without secrets | Default runs do not invoke network review and continue deterministic rule-based decisions | 2026-06-13 |
+| 6 | F-006 | Optional LLM review and improvement suggestions | Hold candidates on invalid LLM JSON or review errors | Failed secondary review must not turn into Telegram approval | Invalid responses produce `llm_invalid_response` hold reasons before notification planning | 2026-06-13 |
+| 6 | F-006 | Optional LLM review and improvement suggestions | Generate criteria suggestions as a separate artifact requiring human approval | Criteria changes should not mutate `config/watchlist.yaml` automatically | `criteria-suggestions.json` can be reviewed without changing operator configuration | 2026-06-13 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -129,3 +132,21 @@
   - Duplicate representative selection follows current input order after listing-key dedupe; a future source adapter may need a stronger broker/source priority rule.
 - Follow-up Notes:
   - F-006 can use the criteria log and urgent feed as the input corpus for optional LLM review and improvement suggestions.
+
+## Session 6 F-006 Addendum
+- Feature ID: F-006
+- Feature: Optional LLM review and improvement suggestions
+- Decisions:
+  - Added `review.py` with disabled-by-default configuration from environment variables and a standard-library Anthropic review adapter.
+  - Added safe JSON parsing that accepts only `approve`, `hold`, or `reject` with a required reason.
+  - Inserted LLM review before notification planning so invalid or failed review responses hold candidates and cannot trigger Telegram sends.
+  - Added `suggestions.py` to generate `data/state/criteria-suggestions.json` only after sufficient criteria-log volume.
+  - Suggestions are explicitly marked `requires_human_approval` and `auto_applied: false`; `config/watchlist.yaml` is not modified.
+- Alternatives Considered:
+  - Add a dependency-backed Anthropic SDK integration: rejected because the repo remains standard-library only and no dependency manifest exists.
+  - Auto-apply threshold or exclusion suggestions: rejected because the spec requires human approval before criteria changes.
+- Risks Introduced:
+  - The live Anthropic adapter is not exercised without secrets and network access; tests cover gating and parser behavior.
+  - Deterministic suggestions are simple frequency summaries and may need richer domain logic after real decision volume accumulates.
+- Follow-up Notes:
+  - Final closeout should run the full QA suite, produce `docs/handoff/jeonseloop-spec-implementation-final.md`, and perform the wiki-write closeout check.

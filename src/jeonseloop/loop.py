@@ -10,6 +10,7 @@ from .analyzer import apply_quality_blocks, approved_candidates, classify_candid
 from .collector import collect_listings
 from .notifier import send_candidates
 from .persistence import load_json, load_previous_average_prices, persist_cycle, write_failure_health
+from .review import apply_llm_review
 from .trades import load_trade_baselines
 from .validator import validate_listing_records
 from .watchlist import WatchlistError, load_watchlist
@@ -66,6 +67,7 @@ def run_cycle(options: LoopOptions) -> dict[str, Any]:
     quality_blocks = detect_average_price_jumps(valid_records, previous_averages)
     candidates = classify_candidates(watchlist.complexes, valid_records, notified_state, trade_baselines)
     candidates = apply_quality_blocks(candidates, quality_blocks)
+    candidates = apply_llm_review(candidates)
     approved_total = len([candidate for candidate in candidates if candidate.decision == "approve"])
     approved = approved_candidates(candidates)
     alert_cap_overflow = max(approved_total - len(approved), 0)
