@@ -11,21 +11,32 @@ class ValidationIssue:
     record: dict[str, Any]
 
 
+class ListingValidator:
+    def validate(
+        self,
+        records_by_complex: dict[str, list[dict[str, Any]]],
+    ) -> tuple[dict[str, list[dict[str, Any]]], list[ValidationIssue]]:
+        valid: dict[str, list[dict[str, Any]]] = {complex_id: [] for complex_id in records_by_complex}
+        issues: list[ValidationIssue] = []
+
+        for complex_id, records in records_by_complex.items():
+            for record in records:
+                reason = _validate_record(complex_id, record)
+                if reason:
+                    issues.append(ValidationIssue(complex_id=complex_id, reason=reason, record=record))
+                else:
+                    valid[complex_id].append(record)
+
+        return valid, issues
+
+    def listing_key(self, record: dict[str, Any]) -> str:
+        return listing_key(record)
+
+
 def validate_listing_records(
     records_by_complex: dict[str, list[dict[str, Any]]],
 ) -> tuple[dict[str, list[dict[str, Any]]], list[ValidationIssue]]:
-    valid: dict[str, list[dict[str, Any]]] = {complex_id: [] for complex_id in records_by_complex}
-    issues: list[ValidationIssue] = []
-
-    for complex_id, records in records_by_complex.items():
-        for record in records:
-            reason = _validate_record(complex_id, record)
-            if reason:
-                issues.append(ValidationIssue(complex_id=complex_id, reason=reason, record=record))
-            else:
-                valid[complex_id].append(record)
-
-    return valid, issues
+    return ListingValidator().validate(records_by_complex)
 
 
 def listing_key(record: dict[str, Any]) -> str:

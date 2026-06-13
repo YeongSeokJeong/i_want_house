@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import os
-from typing import Iterable
+from typing import Callable, Iterable
 from urllib import parse, request
 
 from .analyzer import Candidate
@@ -45,6 +45,24 @@ class TelegramNotifier:
         return NotificationResult(candidate.listing_key, False, "telegram_rejected")
 
 
+class NotificationService:
+    def __init__(self, notifier_factory: Callable[[], TelegramNotifier] | None = None) -> None:
+        self._notifier_factory = notifier_factory if notifier_factory is not None else TelegramNotifier.from_env
+
+    def send_candidates(
+        self,
+        candidates: Iterable[Candidate],
+        *,
+        allow_send: bool,
+    ) -> list[NotificationResult]:
+        candidate_list = list(candidates)
+        if not allow_send:
+            return [NotificationResult(candidate.listing_key, False, "no_send") for candidate in candidate_list]
+
+        notifier = self._notifier_factory()
+        return [notifier.send(candidate) for candidate in candidate_list]
+
+
 def format_candidate_message(candidate: Candidate) -> str:
     listing = candidate.listing
     title = listing.get("title") or listing.get("description") or candidate.listing_key
@@ -63,8 +81,4 @@ def send_candidates(
     *,
     allow_send: bool,
 ) -> list[NotificationResult]:
-    if not allow_send:
-        return [NotificationResult(candidate.listing_key, False, "no_send") for candidate in candidates]
-
-    notifier = TelegramNotifier.from_env()
-    return [notifier.send(candidate) for candidate in candidates]
+    return NotificationService().send_candidates(candidates, allow_send=allow_send)

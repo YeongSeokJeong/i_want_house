@@ -3,9 +3,9 @@ name: large-task-orchestrator
 description: |
   Orchestrates large multi-session development tasks by decomposing work into features,
   enforcing test/QA gates, and preserving continuity through task-scoped plan/progress/decision/architecture files.
-  Use this skill for /large-task-orchestrator start <task-name>, /large-task-orchestrator next <task-name>,
-  /large-task-orchestrator revise <task-name>, /large-task-orchestrator status <task-name>, and /large-task-orchestrator done <task-name>.
-  /large-task-orchestrator resume <task-name> is kept as a legacy alias of next.
+  Use this skill for /large-task-orchestrator start TASK_NAME, /large-task-orchestrator next TASK_NAME,
+  /large-task-orchestrator revise TASK_NAME, /large-task-orchestrator status TASK_NAME, and /large-task-orchestrator done TASK_NAME.
+  /large-task-orchestrator resume TASK_NAME is kept as a legacy alias of next.
 ---
 
 # Large Task Orchestrator
@@ -44,7 +44,7 @@ Use one task-scoped directory per large task:
 2. **Always read `./docs/orchestration/<task-name>/progress.md` and `./docs/orchestration/<task-name>/plan.md` at the start of each session if they exist.**
 3. **If task continuity files do not exist, treat the current session as Session 1 and initialize them.**
 4. **For `/large-task-orchestrator start <task-name>` with sparse requirements, run a short user interview first; do not start deep code reading before interview results are captured.**
-5. **For new requirements, run related-document discovery from `graphify-out/GRAPH_REPORT.md` and `graphify-out/graph.json` before planning. If artifacts are missing or stale, request `/graphify . --update` first.**
+5. **For new requirements, run related-document discovery from `docs/wiki/` and the `wiki-write` routing rules before planning; capture relevant wiki pages, gaps, and any durable knowledge that should be added or updated.**
 6. **Never skip test and QA steps before committing.**
 7. **Never proceed to the next feature until the current feature passes test + QA and is committed.**
 8. **Plan revision is allowed, but only with explicit version bump and revision log update in `plan.md`, and MUST run via `/large-task-orchestrator revise <task-name>`.**
@@ -57,7 +57,7 @@ Use one task-scoped directory per large task:
    - Example: `feat(checkout-funnel/f-002): add invoice retry worker`
 15. **`next` is the execution lifecycle command: it handles session start/resume and session close/handoff for implementation flow.**
 16. **`revise` is documentation-only: it updates `plan.md`, `progress.md`, and `decision.md` without code implementation.**
-17. **`done` must write a final summary file in `./docs/handoff/` and trigger `/graphify . --update`; do not update `README.md` in this step.**
+17. **`done` must write a final summary file in `./docs/handoff/` and run the `wiki-write` closeout check for durable wiki updates; do not update `README.md` in this step.**
 
 ## Workflow-Owned Agent Policy
 
@@ -110,3 +110,4 @@ refactor(checkout-funnel/f-003): separate aggregation service
 
 - [references/document-schemas.md](references/document-schemas.md)
 - [references/feature-slicing.md](references/feature-slicing.md)
+- [../wiki-write/SKILL.md](../wiki-write/SKILL.md)

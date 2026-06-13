@@ -21,6 +21,7 @@ Revision updates for `plan.md`, `progress.md`, and `decision.md` are handled by:
 - `../checklist/next.md`
 - `../checklist/status.md`
 - `../checklist/done.md`
+- [Wiki Write Skill](../../wiki-write/SKILL.md)
 - [SCM Agent](../../../agents/scm.agent.md)
 - [Backend Agent](../../../agents/backend.agent.md)
 - [QA Agent](../../../agents/qa.agent.md)
@@ -180,9 +181,11 @@ Key files: <file list>"
 3. Use [SCM Agent](../../../agents/scm.agent.md) to gather the full project commit list from the shared task branch and include it in the final handoff document.
 4. Include unresolved risks/blockers (or `None`) in the final handoff document.
 5. Set `./docs/orchestration/<task-name>/progress.md` `Status` to `COMPLETED`.
-6. Run graphify refresh after the handoff/progress updates:
-   - `/graphify . --update`
+6. Run the `wiki-write` closeout check after the handoff/progress updates:
+   - identify durable decisions, workflow rules, domain knowledge, or index changes created by the task
+   - update the appropriate `docs/wiki/` pages only when the task produced durable knowledge that belongs in the wiki
+   - refresh `docs/wiki/init.md`, `docs/wiki/index.md`, `docs/wiki/SCHEMA.md`, and/or `docs/wiki/decisions.md` when required by the wiki schema
 7. Output final project summary with:
    - handoff document path
-   - graphify refresh result
+   - wiki-write closeout result
    - final QA gate result
