@@ -12,14 +12,14 @@
 ## Feature Implementation Status
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
 |------------|--------------|--------|--------------|--------|---------|
-| F-001 | Root README 작성 | DONE | 1 | 1fd324b | 2026-06-13 |
+| F-001 | Root README 작성 | DONE | 1 | 30a50bc | 2026-06-13 |
 
 ## Session Log
 | Session | Feature ID | Feature | Status | Commit | Date |
 |---------|------------|---------|--------|--------|------|
 | 1 | PLAN | Planning and orchestration initialization | Done | - | 2026-06-13 |
-| 1 | F-001 | Root README 작성 | Done | 1fd324b | 2026-06-13 |
-| 2 | DONE | Final closeout and handoff | Done | 1fd324b | 2026-06-13 |
+| 1 | F-001 | Root README 작성 | Done | 30a50bc | 2026-06-13 |
+| 2 | DONE | Final closeout and handoff | Done | HEAD closeout commit | 2026-06-13 |
 
 ## Next Session Instructions
 - Next Feature ID: None
