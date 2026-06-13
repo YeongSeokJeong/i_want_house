@@ -30,7 +30,8 @@
 - `CandidateReviewService` -> `AnthropicCandidateReviewer` only when review config is enabled.
 - `CriteriaSuggestionService` -> criteria log and suggestions JSON.
 - `TradeBaselineRepository` -> trade cache JSON files.
-- Proposed F-002 coordinator -> F-001 service classes for explicit dependency composition.
+- `LoopCoordinator` -> F-001 service classes for explicit dependency composition.
+- `run_cycle` and `run_failure_health` -> `LoopCoordinator` compatibility wrappers.
 
 ## Technical Decisions
 - Decision: Prefer service classes with explicit constructor dependencies over module-level orchestration state.
@@ -45,6 +46,9 @@
 - Decision: Use tests and fixture-backed CLI runs as the primary compatibility gate.
   - Rationale: The refactor should preserve behavior while changing structure.
   - Trade-offs: Some architecture quality remains review-based rather than fully machine-verifiable.
+- Decision: Keep CLI parsing outside `LoopCoordinator`.
+  - Rationale: `run.py` is the operator-facing adapter, while the coordinator owns application use-case execution.
+  - Trade-offs: CLI construction still builds `LoopOptions`, but product-loop behavior is now behind the coordinator.
 
 ## Risk Register
 | Risk | Severity | Mitigation | Owner |

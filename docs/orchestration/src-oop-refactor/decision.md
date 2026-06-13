@@ -11,6 +11,7 @@
 | 1 | PLAN | Planning | Split refactor into service-boundary, loop-orchestration, and QA/closeout features | OOP refactors are cross-cutting; staged features reduce regression risk and preserve feature-scoped commits | Provides testable boundaries before changing product-loop assembly | 2026-06-13 |
 | 1 | PLAN | Planning | Preserve existing public functions as compatibility wrappers | Tests and entrypoints may depend on module-level APIs, and behavior change is out of scope | Allows internal OOP migration without breaking external callers | 2026-06-13 |
 | 2 | F-001 | Domain and service object boundaries | Add service/repository classes inside existing modules before changing loop orchestration | This creates stable OOP seams without changing command-line behavior or persisted data shapes | F-002 can compose explicit service objects rather than relying only on module-level functions | 2026-06-13 |
+| 3 | F-002 | Object-oriented loop orchestration | Introduce `LoopCoordinator` as the application-level one-cycle coordinator | The product loop should compose explicit service objects and keep CLI wrappers thin | Core Trigger/Discover/Execute/Verify/Persist/Escalate flow is now object-oriented while preserving `run_cycle` compatibility | 2026-06-13 |
 
 ## Session 1
 - Feature ID: PLAN
@@ -43,3 +44,18 @@
   - Some private persistence helpers still exist as procedural implementation details until F-002/F-003 cleanup.
 - Follow-up Notes:
   - F-002 should instantiate and compose these services from loop orchestration instead of calling only module wrappers.
+
+## Session 3
+- Feature ID: F-002
+- Feature: Object-oriented loop orchestration
+- Decisions:
+  - Added `LoopCoordinator` to own one product-loop cycle and accept explicit service dependencies.
+  - Kept `run_cycle` and `run_failure_health` as compatibility wrappers.
+  - Added a coordinator test that runs with explicit `ListingCollector`, `ListingValidator`, `CandidateAnalyzer`, `LoopStateRepository`, `TradeBaselineRepository`, `CandidateReviewService`, and `NotificationService` instances.
+- Alternatives Considered:
+  - Move CLI argument parsing into the coordinator: rejected because CLI parsing is a presentation concern and `run.py` is already a thin entrypoint.
+  - Remove module-level wrappers immediately: rejected because existing tests and operator entrypoints still use them.
+- Risks Introduced:
+  - The old private `_run_record` helper remains in `loop.py` and should be reviewed in F-003 for removal if unused.
+- Follow-up Notes:
+  - F-003 should perform cleanup and a final architecture review before closeout.

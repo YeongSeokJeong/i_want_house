@@ -9,8 +9,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from jeonseloop.analyzer import Candidate, CandidateAnalyzer
 from jeonseloop.collector import ListingCollector
+from jeonseloop.loop import LoopCoordinator, LoopOptions
 from jeonseloop.notifier import NotificationService
-from jeonseloop.persistence import LoopStateRepository
+from jeonseloop.persistence import JsonStateStore, LoopStateRepository
 from jeonseloop.review import CandidateReviewService, LlmReviewConfig
 from jeonseloop.suggestions import CriteriaSuggestionService
 from jeonseloop.trades import TradeBaselineRepository
@@ -138,6 +139,38 @@ class OopServiceTests(unittest.TestCase):
         self.assertEqual(baselines, {"sample-apt": 925000000})
         self.assertEqual(health["latest"]["run_id"], "run-1")
         self.assertEqual(history["history"][0]["recent_trade_price_krw"], 925000000)
+
+    def test_loop_coordinator_runs_with_explicit_service_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "data"
+            logs_dir = root / "logs"
+            store = JsonStateStore()
+            result = LoopCoordinator(
+                LoopOptions(
+                    watchlist_path=ROOT / "config" / "watchlist.yaml",
+                    data_dir=data_dir,
+                    logs_dir=logs_dir,
+                    fixture_path=ROOT / "tests" / "fixtures" / "listings.json",
+                    dry_run=False,
+                    allow_send=False,
+                ),
+                collector=ListingCollector(),
+                validator=ListingValidator(),
+                analyzer=CandidateAnalyzer(),
+                state_store=store,
+                state_repository=LoopStateRepository(data_dir=data_dir, logs_dir=logs_dir, store=store),
+                trade_repository=TradeBaselineRepository(data_dir),
+                review_service=CandidateReviewService(config=LlmReviewConfig(enabled=False)),
+                notification_service=NotificationService(),
+                run_id_factory=lambda: "explicit-run",
+            ).run()
+
+            health = json.loads((data_dir / "state" / "health.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(result["run_id"], "explicit-run")
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(health["latest"]["run_id"], "explicit-run")
 
 
 if __name__ == "__main__":

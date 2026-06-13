@@ -3,17 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
-from .analyzer import apply_quality_blocks, approved_candidates, classify_candidates, detect_average_price_jumps
-from .collector import collect_listings
-from .notifier import send_candidates
-from .persistence import load_json, load_previous_average_prices, persist_cycle, write_failure_health
-from .review import apply_llm_review
-from .trades import load_trade_baselines
-from .validator import validate_listing_records
-from .watchlist import WatchlistError, load_watchlist
+from .analyzer import CandidateAnalyzer
+from .collector import ListingCollector
+from .notifier import NotificationService
+from .persistence import JsonStateStore, LoopStateRepository
+from .review import CandidateReviewService
+from .trades import TradeBaselineRepository
+from .validator import ListingValidator
+from .watchlist import Watchlist, WatchlistError, load_watchlist
 
 
 @dataclass(frozen=True)
@@ -26,127 +26,202 @@ class LoopOptions:
     allow_send: bool = False
 
 
-def run_cycle(options: LoopOptions) -> dict[str, Any]:
-    started_at = _now()
-    run_id = str(uuid4())
+WatchlistLoader = Callable[[Path], Watchlist]
+Clock = Callable[[], str]
+RunIdFactory = Callable[[], str]
 
-    watchlist = load_watchlist(options.watchlist_path)
-    notified_state = load_json(options.data_dir / "state" / "notified.json", {"notified": {}})
 
-    if not watchlist.complexes:
-        run_record = _run_record(
+class LoopCoordinator:
+    def __init__(
+        self,
+        options: LoopOptions,
+        *,
+        watchlist_loader: WatchlistLoader = load_watchlist,
+        collector: ListingCollector | None = None,
+        validator: ListingValidator | None = None,
+        analyzer: CandidateAnalyzer | None = None,
+        state_store: JsonStateStore | None = None,
+        state_repository: LoopStateRepository | None = None,
+        trade_repository: TradeBaselineRepository | None = None,
+        review_service: CandidateReviewService | None = None,
+        notification_service: NotificationService | None = None,
+        clock: Clock | None = None,
+        run_id_factory: RunIdFactory | None = None,
+    ) -> None:
+        self._options = options
+        self._watchlist_loader = watchlist_loader
+        self._collector = collector
+        self._validator = validator if validator is not None else ListingValidator()
+        self._analyzer = analyzer if analyzer is not None else CandidateAnalyzer()
+        self._state_store = state_store if state_store is not None else JsonStateStore()
+        self._state_repository = state_repository
+        self._trade_repository = trade_repository
+        self._review_service = review_service if review_service is not None else CandidateReviewService()
+        self._notification_service = notification_service if notification_service is not None else NotificationService()
+        self._clock = clock if clock is not None else _now
+        self._run_id_factory = run_id_factory if run_id_factory is not None else lambda: str(uuid4())
+
+    def run(self) -> dict[str, Any]:
+        started_at = self._clock()
+        run_id = self._run_id_factory()
+
+        watchlist = self._watchlist_loader(self._options.watchlist_path)
+        notified_state = self._state_store.load_json(self._options.data_dir / "state" / "notified.json", {"notified": {}})
+        state_repository = self._state_repository_for_run()
+
+        if not watchlist.complexes:
+            run_record = self._run_record(
+                run_id,
+                started_at,
+                status="skipped",
+                reason="empty_watchlist",
+                counts={"watched_complexes": 0, "valid_listings": 0, "invalid_listings": 0, "approved_candidates": 0},
+            )
+            if not self._options.dry_run:
+                state_repository.persist_cycle(
+                    run_record=run_record,
+                    records_by_complex={},
+                    candidates=[],
+                    invalid_records=[],
+                    notified_updates={},
+                )
+            return run_record
+
+        collector = self._collector_for_watchlist(watchlist)
+        raw_records = collector.collect(watchlist.complexes, self._options.fixture_path)
+        valid_records, invalid_records = self._validator.validate(raw_records)
+        trade_baselines = self._trade_repository_for_run().load(watchlist.complexes)
+        previous_averages = state_repository.load_previous_average_prices(
+            tuple(target.complex_id for target in watchlist.complexes),
+        )
+        quality_blocks = self._analyzer.detect_average_price_jumps(valid_records, previous_averages)
+        candidates = self._analyzer.classify(watchlist.complexes, valid_records, notified_state, trade_baselines)
+        candidates = self._analyzer.apply_quality_blocks(candidates, quality_blocks)
+        candidates = self._review_service.apply(candidates)
+        approved_total = len([candidate for candidate in candidates if candidate.decision == "approve"])
+        approved = self._analyzer.approved(candidates)
+        alert_cap_overflow = max(approved_total - len(approved), 0)
+        notifications = self._notification_service.send_candidates(
+            approved,
+            allow_send=self._options.allow_send and not self._options.dry_run,
+        )
+
+        sent_by_key = {result.listing_key: result for result in notifications if result.sent}
+        notified_updates = {
+            candidate.listing_key: {
+                "price_krw": candidate.price_krw,
+                "complex_id": candidate.complex_id,
+                "notified_at": self._clock(),
+            }
+            for candidate in approved
+            if candidate.listing_key in sent_by_key
+        }
+
+        status = "success"
+        reason = "completed"
+        if invalid_records and not any(valid_records.values()):
+            status = "failed"
+            reason = "all_records_invalid"
+        if quality_blocks:
+            status = "failed"
+            reason = "data_quality_blocked"
+
+        run_record = self._run_record(
             run_id,
             started_at,
-            status="skipped",
-            reason="empty_watchlist",
-            counts={"watched_complexes": 0, "valid_listings": 0, "invalid_listings": 0, "approved_candidates": 0},
+            status=status,
+            reason=reason,
+            counts={
+                "watched_complexes": len(watchlist.complexes),
+                "valid_listings": sum(len(records) for records in valid_records.values()),
+                "invalid_listings": len(invalid_records),
+                "approved_candidates": approved_total,
+                "notifications_sent": len(sent_by_key),
+                "notifications_planned": len(approved),
+                "data_quality_blocks": len(quality_blocks),
+                "alert_cap_overflow": alert_cap_overflow,
+            },
         )
-        if not options.dry_run:
-            persist_cycle(
-                data_dir=options.data_dir,
-                logs_dir=options.logs_dir,
-                run_record=run_record,
-                records_by_complex={},
-                candidates=[],
-                invalid_records=[],
-                notified_updates={},
-            )
+
+        if not self._options.dry_run:
+            if quality_blocks:
+                state_repository.write_failure_health(run_record)
+            else:
+                state_repository.persist_cycle(
+                    run_record=run_record,
+                    records_by_complex=valid_records,
+                    candidates=candidates,
+                    invalid_records=invalid_records,
+                    notified_updates=notified_updates,
+                    trade_baselines=trade_baselines,
+                )
+
         return run_record
 
-    raw_records = collect_listings(
-        watchlist.complexes,
-        options.fixture_path,
-        request_interval_seconds=watchlist.request_interval_seconds,
-    )
-    valid_records, invalid_records = validate_listing_records(raw_records)
-    trade_baselines = load_trade_baselines(options.data_dir, watchlist.complexes)
-    previous_averages = load_previous_average_prices(
-        options.data_dir,
-        tuple(target.complex_id for target in watchlist.complexes),
-    )
-    quality_blocks = detect_average_price_jumps(valid_records, previous_averages)
-    candidates = classify_candidates(watchlist.complexes, valid_records, notified_state, trade_baselines)
-    candidates = apply_quality_blocks(candidates, quality_blocks)
-    candidates = apply_llm_review(candidates)
-    approved_total = len([candidate for candidate in candidates if candidate.decision == "approve"])
-    approved = approved_candidates(candidates)
-    alert_cap_overflow = max(approved_total - len(approved), 0)
-    notifications = send_candidates(approved, allow_send=options.allow_send and not options.dry_run)
-
-    sent_by_key = {result.listing_key: result for result in notifications if result.sent}
-    notified_updates = {
-        candidate.listing_key: {
-            "price_krw": candidate.price_krw,
-            "complex_id": candidate.complex_id,
-            "notified_at": _now(),
+    def record_watchlist_failure(self, error: WatchlistError) -> dict[str, Any]:
+        now = self._clock()
+        record = {
+            "run_id": self._run_id_factory(),
+            "started_at": now,
+            "finished_at": now,
+            "status": "failed",
+            "reason": "watchlist_invalid",
+            "error": str(error),
+            "counts": {
+                "watched_complexes": 0,
+                "valid_listings": 0,
+                "invalid_listings": 0,
+                "approved_candidates": 0,
+            },
         }
-        for candidate in approved
-        if candidate.listing_key in sent_by_key
-    }
+        if not self._options.dry_run:
+            self._state_repository_for_run().write_failure_health(record)
+        return record
 
-    status = "success"
-    reason = "completed"
-    if invalid_records and not any(valid_records.values()):
-        status = "failed"
-        reason = "all_records_invalid"
-    if quality_blocks:
-        status = "failed"
-        reason = "data_quality_blocked"
+    def _collector_for_watchlist(self, watchlist: Watchlist) -> ListingCollector:
+        if self._collector is not None:
+            return self._collector
+        return ListingCollector(request_interval_seconds=watchlist.request_interval_seconds)
 
-    run_record = _run_record(
-        run_id,
-        started_at,
-        status=status,
-        reason=reason,
-        counts={
-            "watched_complexes": len(watchlist.complexes),
-            "valid_listings": sum(len(records) for records in valid_records.values()),
-            "invalid_listings": len(invalid_records),
-            "approved_candidates": approved_total,
-            "notifications_sent": len(sent_by_key),
-            "notifications_planned": len(approved),
-            "data_quality_blocks": len(quality_blocks),
-            "alert_cap_overflow": alert_cap_overflow,
-        },
-    )
+    def _state_repository_for_run(self) -> LoopStateRepository:
+        if self._state_repository is not None:
+            return self._state_repository
+        return LoopStateRepository(
+            data_dir=self._options.data_dir,
+            logs_dir=self._options.logs_dir,
+            store=self._state_store,
+        )
 
-    if not options.dry_run:
-        if quality_blocks:
-            write_failure_health(options.data_dir, run_record)
-        else:
-            persist_cycle(
-                data_dir=options.data_dir,
-                logs_dir=options.logs_dir,
-                run_record=run_record,
-                records_by_complex=valid_records,
-                candidates=candidates,
-                invalid_records=invalid_records,
-                notified_updates=notified_updates,
-                trade_baselines=trade_baselines,
-            )
+    def _trade_repository_for_run(self) -> TradeBaselineRepository:
+        if self._trade_repository is not None:
+            return self._trade_repository
+        return TradeBaselineRepository(self._options.data_dir)
 
-    return run_record
+    def _run_record(
+        self,
+        run_id: str,
+        started_at: str,
+        *,
+        status: str,
+        reason: str,
+        counts: dict[str, int],
+    ) -> dict[str, Any]:
+        return {
+            "run_id": run_id,
+            "started_at": started_at,
+            "finished_at": self._clock(),
+            "status": status,
+            "reason": reason,
+            "counts": counts,
+        }
+
+
+def run_cycle(options: LoopOptions) -> dict[str, Any]:
+    return LoopCoordinator(options).run()
 
 
 def run_failure_health(options: LoopOptions, error: WatchlistError) -> dict[str, Any]:
-    now = _now()
-    record = {
-        "run_id": str(uuid4()),
-        "started_at": now,
-        "finished_at": now,
-        "status": "failed",
-        "reason": "watchlist_invalid",
-        "error": str(error),
-        "counts": {
-            "watched_complexes": 0,
-            "valid_listings": 0,
-            "invalid_listings": 0,
-            "approved_candidates": 0,
-        },
-    }
-    if not options.dry_run:
-        write_failure_health(options.data_dir, record)
-    return record
+    return LoopCoordinator(options).record_watchlist_failure(error)
 
 
 def _run_record(
