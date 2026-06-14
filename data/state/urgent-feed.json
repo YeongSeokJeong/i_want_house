@@ -1,7 +1,22 @@
 {
   "alert_cap_overflow": 0,
   "alert_limit": 5,
-  "generated_at": "2026-06-13T11:15:47+00:00",
-  "items": [],
-  "run_id": "b374eb7f-6673-42e1-bb1c-f0279865998c"
+  "generated_at": "2026-06-12T09:00:00+00:00",
+  "items": [
+    {
+      "alert_planned": true,
+      "area_m2": 84.9,
+      "building": "101",
+      "complex_id": "sample-apt",
+      "decision": "approve",
+      "description": "Fixture listing below the target price",
+      "floor": 12,
+      "link": "https://example.invalid/listing-1",
+      "listing_key": "listing-1",
+      "price_krw": 830000000,
+      "reason": "baseline_price",
+      "title": "Sample low price listing"
+    }
+  ],
+  "run_id": "sample-run-20260612"
 }

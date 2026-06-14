@@ -7,10 +7,11 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from .analyzer import CandidateAnalyzer
-from .collector import ListingCollector
+from .collector import ListingCollector, ListingSourceNotConfiguredError, TransientListingFetchError
 from .notifier import NotificationService
 from .persistence import JsonStateStore, LoopStateRepository
 from .review import CandidateReviewService
+from .sources import SourceFetchError, listing_fetcher_from_env, trade_fetcher_from_env
 from .trades import TradeBaselineRepository
 from .validator import ListingValidator
 from .watchlist import Watchlist, WatchlistError, load_watchlist
@@ -88,9 +89,38 @@ class LoopCoordinator:
             return run_record
 
         collector = self._collector_for_watchlist(watchlist)
-        raw_records = collector.collect(watchlist.complexes, self._options.fixture_path)
+        try:
+            raw_records = collector.collect(watchlist.complexes, self._options.fixture_path)
+        except ListingSourceNotConfiguredError as exc:
+            return self._record_runtime_failure(
+                run_id,
+                started_at,
+                state_repository,
+                reason="listing_source_unconfigured",
+                error=exc,
+                watched_complexes=len(watchlist.complexes),
+            )
+        except (TransientListingFetchError, SourceFetchError) as exc:
+            return self._record_runtime_failure(
+                run_id,
+                started_at,
+                state_repository,
+                reason="collector_failed",
+                error=exc,
+                watched_complexes=len(watchlist.complexes),
+            )
         valid_records, invalid_records = self._validator.validate(raw_records)
-        trade_baselines = self._trade_repository_for_run().load(watchlist.complexes)
+        try:
+            trade_baselines = self._trade_repository_for_run().load(watchlist.complexes)
+        except SourceFetchError as exc:
+            return self._record_runtime_failure(
+                run_id,
+                started_at,
+                state_repository,
+                reason="trade_source_failed",
+                error=exc,
+                watched_complexes=len(watchlist.complexes),
+            )
         previous_averages = state_repository.load_previous_average_prices(
             tuple(target.complex_id for target in watchlist.complexes),
         )
@@ -181,7 +211,10 @@ class LoopCoordinator:
     def _collector_for_watchlist(self, watchlist: Watchlist) -> ListingCollector:
         if self._collector is not None:
             return self._collector
-        return ListingCollector(request_interval_seconds=watchlist.request_interval_seconds)
+        return ListingCollector(
+            fetcher=listing_fetcher_from_env(),
+            request_interval_seconds=watchlist.request_interval_seconds,
+        )
 
     def _state_repository_for_run(self) -> LoopStateRepository:
         if self._state_repository is not None:
@@ -195,7 +228,7 @@ class LoopCoordinator:
     def _trade_repository_for_run(self) -> TradeBaselineRepository:
         if self._trade_repository is not None:
             return self._trade_repository
-        return TradeBaselineRepository(self._options.data_dir)
+        return TradeBaselineRepository(self._options.data_dir, fetcher=trade_fetcher_from_env())
 
     def _run_record(
         self,
@@ -214,6 +247,33 @@ class LoopCoordinator:
             "reason": reason,
             "counts": counts,
         }
+
+    def _record_runtime_failure(
+        self,
+        run_id: str,
+        started_at: str,
+        state_repository: LoopStateRepository,
+        *,
+        reason: str,
+        error: Exception,
+        watched_complexes: int,
+    ) -> dict[str, Any]:
+        run_record = self._run_record(
+            run_id,
+            started_at,
+            status="failed",
+            reason=reason,
+            counts={
+                "watched_complexes": watched_complexes,
+                "valid_listings": 0,
+                "invalid_listings": 0,
+                "approved_candidates": 0,
+            },
+        )
+        run_record["error"] = str(error)
+        if not self._options.dry_run:
+            state_repository.write_failure_health(run_record)
+        return run_record
 
 
 def run_cycle(options: LoopOptions) -> dict[str, Any]:

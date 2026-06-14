@@ -25,4 +25,25 @@ if ($Fixture) {
   $argsList += @("--fixture", $Fixture)
 }
 
-python @argsList
+$pythonCommand = $null
+$pythonArgsPrefix = @()
+if ($env:PYTHON) {
+  $pythonCommand = $env:PYTHON
+} else {
+  $python = Get-Command python -ErrorAction SilentlyContinue
+  if ($python) {
+    $pythonCommand = $python.Source
+  } else {
+    $py = Get-Command py -ErrorAction SilentlyContinue
+    if ($py) {
+      $pythonCommand = $py.Source
+      $pythonArgsPrefix = @("-3")
+    }
+  }
+}
+
+if (-not $pythonCommand) {
+  throw "Python interpreter not found. Install Python, add it to PATH, or set the PYTHON environment variable."
+}
+
+& $pythonCommand @pythonArgsPrefix @argsList

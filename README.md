@@ -124,8 +124,17 @@ Workflow: `.github/workflows/jeonseloop.yml`
 필요한 repository secrets:
 
 ```text
+JEONSELOOP_LISTING_SOURCE_URL
 TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID
+```
+
+선택 repository secrets/variables:
+
+```text
+JEONSELOOP_TRADE_SOURCE_URL
+JEONSELOOP_SOURCE_BEARER_TOKEN
+JEONSELOOP_SOURCE_TIMEOUT_SECONDS
 ```
 
 실제 Telegram 전송은 workflow input `send=true` 또는 CLI `--send`가 있어야 합니다.
@@ -143,6 +152,26 @@ ANTHROPIC_API_KEY=<secret>
 - JSON 파싱 실패, 필수 필드 누락, 네트워크 오류는 후보를 `hold` 처리합니다.
 - 실패한 LLM 응답은 Telegram 알림으로 이어지지 않습니다.
 - 기준 개선 제안은 `criteria-suggestions.json`에만 기록되고 `config/watchlist.yaml`은 자동 수정하지 않습니다.
+
+## 실서비스 데이터 소스 설정
+
+fixture 없이 실행하는 운영 루프는 live 매물 소스가 필요합니다. `JEONSELOOP_LISTING_SOURCE_URL`이 없으면 빈 수집을 성공으로 처리하지 않고 `listing_source_unconfigured` health 실패를 기록합니다.
+
+지원하는 HTTP JSON 계약:
+
+```text
+JEONSELOOP_LISTING_SOURCE_URL=https://example.invalid/listings/{complex_id}
+JEONSELOOP_TRADE_SOURCE_URL=https://example.invalid/trades/{complex_id}
+JEONSELOOP_SOURCE_BEARER_TOKEN=<optional-secret>
+JEONSELOOP_SOURCE_TIMEOUT_SECONDS=15
+```
+
+- URL에는 `{complex_id}`, `{name}`, `{area_m2}` placeholder를 사용할 수 있습니다.
+- 매물 응답은 JSON list 또는 `{ "listings": [...] }` 형식이어야 합니다.
+- 실거래 응답은 JSON list 또는 `{ "trades": [...] }` 형식이어야 합니다.
+- 매물 레코드는 기존 schema 검증을 통과해야 하며, 필수 필드는 `price_krw`, `area_m2`, `floor`, `link`입니다.
+- 실거래 레코드는 `price_krw` 또는 `trade_price_krw`를 사용합니다.
+- 실제 포털/API credentials, 약관, 응답 유효성은 운영 환경에서 별도 검증해야 합니다.
 
 ## 대시보드
 
@@ -175,10 +204,10 @@ python -m unittest discover -s tests
 node --check assets\dashboard.js
 ```
 
-제품 루프 dry-run:
+fixture 기반 제품 루프 dry-run:
 
 ```powershell
-powershell -File scripts/run-loop.ps1 -DryRun
+powershell -File scripts/run-loop.ps1 -DryRun -Fixture tests\fixtures\listings.json
 ```
 
 개발 검사 프롬프트:

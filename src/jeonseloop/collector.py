@@ -5,11 +5,16 @@ from pathlib import Path
 import time
 from typing import Any, Callable
 
+from .sources import TransientSourceFetchError
 from .watchlist import WatchTarget
 
 
 class TransientListingFetchError(RuntimeError):
     """Raised by live listing adapters when a retry may succeed."""
+
+
+class ListingSourceNotConfiguredError(RuntimeError):
+    """Raised when live collection is requested without a listing source."""
 
 
 ListingFetcher = Callable[[WatchTarget], list[dict[str, Any]]]
@@ -44,11 +49,14 @@ class ListingCollector:
 
         result = {target.complex_id: [] for target in targets}
         if fixture_path is None:
-            if self._fetcher is not None:
-                for index, target in enumerate(targets):
-                    if index:
-                        self._sleeper(self._request_interval_seconds)
-                    result[target.complex_id] = self._fetch_with_retries(target)
+            if self._fetcher is None:
+                raise ListingSourceNotConfiguredError(
+                    "live listing source is not configured; provide a fixture or JEONSELOOP_LISTING_SOURCE_URL"
+                )
+            for index, target in enumerate(targets):
+                if index:
+                    self._sleeper(self._request_interval_seconds)
+                result[target.complex_id] = self._fetch_with_retries(target)
             return result
 
         payload = json.loads(fixture_path.read_text(encoding="utf-8"))
@@ -105,7 +113,7 @@ def _fetch_with_retries(
     for attempt in range(1, retry_attempts + 1):
         try:
             return fetcher(target)
-        except TransientListingFetchError:
+        except (TransientListingFetchError, TransientSourceFetchError):
             if attempt == retry_attempts:
                 raise
             sleeper(request_interval_seconds)
