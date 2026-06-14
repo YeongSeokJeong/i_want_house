@@ -124,7 +124,6 @@ Workflow: `.github/workflows/jeonseloop.yml`
 필요한 repository secrets:
 
 ```text
-JEONSELOOP_LISTING_SOURCE_URL
 TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID
 ```
@@ -133,6 +132,12 @@ TELEGRAM_CHAT_ID
 
 ```text
 JEONSELOOP_TRADE_SOURCE_URL
+JEONSELOOP_LISTING_SOURCE_URL
+JEONSELOOP_LISTING_SOURCE_KIND
+JEONSELOOP_HOGANGNONO_APT_HASH_MAP
+JEONSELOOP_HOGANGNONO_TRADE_TYPES
+JEONSELOOP_HOGANGNONO_PAGE_SIZE
+JEONSELOOP_HOGANGNONO_MAX_PAGES
 JEONSELOOP_SOURCE_BEARER_TOKEN
 JEONSELOOP_SOURCE_TIMEOUT_SECONDS
 OPENAI_API_KEY
@@ -160,7 +165,7 @@ JEONSELOOP_LLM_MODEL=gpt-4.1
 
 ## 실서비스 데이터 소스 설정
 
-fixture 없이 실행하는 운영 루프는 live 매물 소스가 필요합니다. `JEONSELOOP_LISTING_SOURCE_URL`이 없으면 빈 수집을 성공으로 처리하지 않고 `listing_source_unconfigured` health 실패를 기록합니다.
+fixture 없이 실행하는 운영 루프는 live 매물 소스가 필요합니다. `JEONSELOOP_LISTING_SOURCE_KIND=hogangnono` 또는 `JEONSELOOP_LISTING_SOURCE_URL`이 없으면 빈 수집을 성공으로 처리하지 않고 `listing_source_unconfigured` health 실패를 기록합니다.
 
 지원하는 HTTP JSON 계약:
 
@@ -238,6 +243,24 @@ Get-Content .codex\prompts\loop-review.md -Raw | codex exec --sandbox read-only 
 - GitHub Pages가 원하는 branch/path를 서빙하는지
 - Telegram secrets가 정확하고 `--send` 실행 시 실제 메시지가 도착하는지
 - 외부 매물/실거래 데이터 소스 접근 정책과 응답이 유효한지
+## 호갱노노 매물 수집 설정
+
+정기 실행에서 호갱노노 매매 매물을 수집하려면 GitHub repository variables에 다음 값을 넣습니다.
+
+```text
+JEONSELOOP_LISTING_SOURCE_KIND=hogangnono
+JEONSELOOP_HOGANGNONO_APT_HASH_MAP={"baengnyeonsan-hillstate-3":"E152","bulgwang-miseong":"B11b"}
+JEONSELOOP_HOGANGNONO_TRADE_TYPES=0
+JEONSELOOP_HOGANGNONO_PAGE_SIZE=50
+JEONSELOOP_HOGANGNONO_MAX_PAGES=3
+```
+
+- `JEONSELOOP_HOGANGNONO_APT_HASH_MAP`은 watchlist의 `complex_id`를 호갱노노 아파트 해시로 연결하는 JSON 객체입니다.
+- watchlist `complex_id`가 `E152`처럼 호갱노노 해시 자체이면 매핑 없이도 조회할 수 있습니다.
+- `JEONSELOOP_HOGANGNONO_TRADE_TYPES=0`은 매매 매물을 뜻합니다.
+- 호갱노노 수집은 공개 JSON 응답에 대한 best-effort 방식입니다. HTTP 429, 로그인 요구, 구조 변경이 발생하면 우회하지 않고 실패로 기록합니다.
+- 실패 시 이전 정상 `data/listings`와 `data/history` 상태는 보존하고, `data/state/collector-diagnostics.json`에 진단 정보를 남깁니다.
+
 ## 네이버부동산 웹 수집 설정
 
 정기 실행에서 네이버부동산을 직접 수집하려면 GitHub repository variables에 다음 값을 넣습니다.
