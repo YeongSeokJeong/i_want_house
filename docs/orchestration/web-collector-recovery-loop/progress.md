@@ -34,11 +34,12 @@
 | 1 | F-004 | Actions recovery workflow | Done | - | 2026-06-14 |
 | 1 | F-005 | Operator documentation | Done | - | 2026-06-14 |
 | 2 | F-004 | Actions recovery workflow | Done | - | 2026-06-14 |
+| 3 | F-005 | Operator configuration | Done | - | 2026-06-15 |
 
 ## Next Session Instructions
 - Next Feature ID: DONE
 - Next Feature: Closeout
-- Description: Run final verification, write handoff, and close linked backlog item.
+- Description: Verify GitHub Actions with the configured Naver sale watchlist.
 - Key Files: `docs/handoff/web-collector-recovery-loop-final.md`, `docs/backlog.md`
 - Dependencies Ready: yes
-- Known Issues: Naver source settings were initially entered as GitHub Secrets, so the workflow now reads Variables first and Secrets as fallback.
+- Known Issues: Runtime success still depends on Naver allowing the GitHub runner request.

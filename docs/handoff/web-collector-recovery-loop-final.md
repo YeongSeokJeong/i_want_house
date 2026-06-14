@@ -27,13 +27,15 @@ The task adds:
 ## Operational Notes
 - Configure Naver mode with repository variables:
   - `JEONSELOOP_LISTING_SOURCE_KIND=naver`
-  - `JEONSELOOP_NAVER_COMPLEX_NO_MAP={"sample-apt":"111515"}`
-  - `JEONSELOOP_NAVER_TRADE_TYPE=B1`
+  - `JEONSELOOP_NAVER_COMPLEX_NO_MAP={"baengnyeonsan-hillstate-3":"100123","bulgwang-miseong":"738"}`
+  - `JEONSELOOP_NAVER_TRADE_TYPE=A1`
   - `JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT`
   - `JEONSELOOP_NAVER_MAX_PAGES=3`
+- The active watchlist now tracks sale listings for:
+  - `baengnyeonsan-hillstate-3`, area `78.87`, target price `850000000`.
+  - `bulgwang-miseong`, area `86.47`, target price `850000000`.
 - Live Naver access returned HTTP 429 from the local environment during implementation. The collector treats this as a transient source failure and does not bypass access controls.
 - The recovery loop creates reports/artifacts only. It does not push to `main`.
 
 ## Changed Wiki Content
 - `docs/wiki/domains/jeonseloop/overview.md` added `## 네이버부동산 수집과 복구 루프`.
-

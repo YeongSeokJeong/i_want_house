@@ -1,10 +1,13 @@
 version: 1
 request_interval_seconds: 2
 complexes:
-  - complex_id: sample-apt
-    name: Sample Apartment
-    area_m2: 84.9
+  - complex_id: baengnyeonsan-hillstate-3
+    name: 백련산힐스테이트3차
+    area_m2: 78.87
     target_price_krw: 850000000
     urgent_discount_ratio: 0.12
-    exclude:
-      - basement
+  - complex_id: bulgwang-miseong
+    name: 불광 미성아파트
+    area_m2: 86.47
+    target_price_krw: 850000000
+    urgent_discount_ratio: 0.12

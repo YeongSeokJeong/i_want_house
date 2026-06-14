@@ -1,7 +1,7 @@
 # JeonseLoop 개요
 
 ## 목적
-JeonseLoop는 관심 아파트 단지의 전세 매물, 실거래 기준선, 후보 판정, 알림 상태를 Git 저장소의 JSON/Markdown 상태로 남기는 개인용 무인 감시 루프다.
+JeonseLoop는 관심 아파트 단지의 매매/전세 매물, 실거래 기준선, 후보 판정, 알림 상태를 Git 저장소의 JSON/Markdown 상태로 남기는 개인용 무인 감시 루프다.
 
 ## 핵심 내용
 - 실행 진입점은 `scripts/run-loop.*`와 `src/jeonseloop/run.py`이며 GitHub Actions가 정기/수동 실행을 담당한다.
@@ -30,7 +30,7 @@ JeonseLoop는 관심 아파트 단지의 전세 매물, 실거래 기준선, 후
 ## 네이버부동산 수집과 복구 루프
 - `JEONSELOOP_LISTING_SOURCE_KIND=naver`를 설정하면 live listing source로 네이버부동산 어댑터를 사용한다.
 - `JEONSELOOP_NAVER_COMPLEX_NO_MAP`은 watchlist의 `complex_id`를 네이버 단지번호로 매핑하는 JSON 객체다. 예: `{"sample-apt":"111515"}`.
-- 기본 전세 수집값은 `JEONSELOOP_NAVER_TRADE_TYPE=B1`, 주거 유형은 `JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT`, 조회 페이지 수는 `JEONSELOOP_NAVER_MAX_PAGES=3`이다.
+- 현재 운영 수집값은 매매 기준 `JEONSELOOP_NAVER_TRADE_TYPE=A1`, 주거 유형 `JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT`, 조회 페이지 수 `JEONSELOOP_NAVER_MAX_PAGES=3`이다. 전세 수집이 필요하면 `B1`을 사용한다.
 - 네이버부동산 응답은 환경과 시점에 따라 HTTP 429, 로그인 요구, CAPTCHA, 스키마 변경이 발생할 수 있다. 이 경우 우회하지 않고 실패로 기록한다.
 - 수집 실패 시 `data/state/collector-diagnostics.json`에 source kind, failure stage, error type, target complex_id를 redaction 후 저장한다.
 - GitHub Actions의 `JeonseLoop` workflow는 실패 시 `collector-diagnostics` artifact를 업로드하고, `Collector Recovery` workflow는 실패 run ID를 받아 `collector-recovery-report` artifact를 생성한다.

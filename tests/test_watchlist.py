@@ -14,8 +14,11 @@ class WatchlistTests(unittest.TestCase):
         watchlist = load_watchlist(ROOT / "config" / "watchlist.yaml")
 
         self.assertEqual(watchlist.version, 1)
-        self.assertEqual(len(watchlist.complexes), 1)
-        self.assertEqual(watchlist.complexes[0].complex_id, "sample-apt")
+        self.assertEqual(len(watchlist.complexes), 2)
+        self.assertEqual(
+            [target.complex_id for target in watchlist.complexes],
+            ["baengnyeonsan-hillstate-3", "bulgwang-miseong"],
+        )
         self.assertGreaterEqual(watchlist.request_interval_seconds, 2)
 
     def test_rejects_missing_required_field(self) -> None:

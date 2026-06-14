@@ -1,6 +1,6 @@
 # JeonseLoop
 
-JeonseLoop는 관심 아파트 단지의 전세 매물과 실거래 기준선을 주기적으로 수집하고, 급매 후보를 판정해 Telegram 알림과 Git 저장소 기반 상태 파일로 남기는 개인용 무인 감시 루프입니다.
+JeonseLoop는 관심 아파트 단지의 매매/전세 매물과 실거래 기준선을 주기적으로 수집하고, 급매 후보를 판정해 Telegram 알림과 Git 저장소 기반 상태 파일로 남기는 개인용 무인 감시 루프입니다.
 
 이 저장소는 별도 DB 없이 JSON/Markdown 파일을 상태 저장소로 사용하고, GitHub Actions와 GitHub Pages 정적 대시보드로 운영하는 것을 목표로 합니다.
 
@@ -245,13 +245,13 @@ Get-Content .codex\prompts\loop-review.md -Raw | codex exec --sandbox read-only 
 ```text
 JEONSELOOP_LISTING_SOURCE_KIND=naver
 JEONSELOOP_NAVER_COMPLEX_NO_MAP={"sample-apt":"111515"}
-JEONSELOOP_NAVER_TRADE_TYPE=B1
+JEONSELOOP_NAVER_TRADE_TYPE=A1
 JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT
 JEONSELOOP_NAVER_MAX_PAGES=3
 ```
 
 - `JEONSELOOP_NAVER_COMPLEX_NO_MAP`은 watchlist의 `complex_id`를 네이버 단지번호로 연결하는 JSON 객체입니다.
-- `JEONSELOOP_NAVER_TRADE_TYPE=B1`은 전세 매물을 뜻합니다.
+- `JEONSELOOP_NAVER_TRADE_TYPE=A1`은 매매 매물을 뜻합니다. 전세로 바꾸려면 `B1`을 사용합니다.
 - 네이버부동산 수집은 공개 응답에 대한 best-effort 방식입니다. HTTP 429, CAPTCHA, 로그인 요구, 구조 변경이 발생하면 우회하지 않고 실패로 기록합니다.
 - 실패 시 이전 정상 `data/listings`와 `data/history` 상태는 보존하고, `data/state/collector-diagnostics.json`에 진단 정보를 남깁니다.
 

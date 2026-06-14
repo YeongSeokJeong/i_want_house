@@ -371,7 +371,10 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(health["latest"]["reason"], "collector_failed")
         self.assertEqual(diagnostics["source_kind"], "naver")
         self.assertEqual(diagnostics["failure_stage"], "listing_collection")
-        self.assertEqual(diagnostics["targets"], [{"complex_id": "sample-apt"}])
+        self.assertEqual(
+            diagnostics["targets"],
+            [{"complex_id": "baengnyeonsan-hillstate-3"}, {"complex_id": "bulgwang-miseong"}],
+        )
         self.assertNotIn("secret-token", json.dumps(diagnostics))
         self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
 
@@ -480,7 +483,7 @@ class ReliabilityTests(unittest.TestCase):
             root = Path(temp_dir)
             history_dir = root / "data" / "history"
             history_dir.mkdir(parents=True)
-            (history_dir / "sample-apt.json").write_text(
+            (history_dir / "baengnyeonsan-hillstate-3.json").write_text(
                 json.dumps({"history": [{"average_price_krw": 1200000000}]}),
                 encoding="utf-8",
             )
@@ -502,14 +505,14 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(result["reason"], "data_quality_blocked")
         self.assertEqual(result["counts"]["data_quality_blocks"], 1)
         self.assertEqual(health["failure_streak"], 1)
-        self.assertFalse((root / "data" / "listings" / "sample-apt.json").exists())
+        self.assertFalse((root / "data" / "listings" / "baengnyeonsan-hillstate-3.json").exists())
 
     def test_cycle_persists_recent_trade_baseline_in_history(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             trades_dir = root / "data" / "trades"
             trades_dir.mkdir(parents=True)
-            (trades_dir / "sample-apt.json").write_text(
+            (trades_dir / "baengnyeonsan-hillstate-3.json").write_text(
                 json.dumps({"trades": [{"price_krw": 930000000}, {"price_krw": 920000000}]}),
                 encoding="utf-8",
             )
@@ -525,7 +528,9 @@ class ReliabilityTests(unittest.TestCase):
                 )
             )
 
-            history = json.loads((root / "data" / "history" / "sample-apt.json").read_text(encoding="utf-8"))
+            history = json.loads(
+                (root / "data" / "history" / "baengnyeonsan-hillstate-3.json").read_text(encoding="utf-8")
+            )
 
         self.assertEqual(result["status"], "success")
         self.assertEqual(history["history"][-1]["recent_trade_price_krw"], 925000000)

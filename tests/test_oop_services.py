@@ -44,11 +44,16 @@ def listing(listing_id: str = "listing-1", price: int = 830000000) -> dict:
 class OopServiceTests(unittest.TestCase):
     def test_listing_collector_and_validator_classes_cover_fixture_records(self) -> None:
         collector = ListingCollector()
-        records = collector.collect((TARGET,), ROOT / "tests" / "fixtures" / "listings.json")
+        targets = (
+            WatchTarget("baengnyeonsan-hillstate-3", "백련산힐스테이트3차", 78.87, 850000000),
+            WatchTarget("bulgwang-miseong", "불광 미성아파트", 86.47, 850000000),
+        )
+        records = collector.collect(targets, ROOT / "tests" / "fixtures" / "listings.json")
 
         valid, invalid = ListingValidator().validate(records)
 
-        self.assertEqual(len(valid["sample-apt"]), 2)
+        self.assertEqual(len(valid["baengnyeonsan-hillstate-3"]), 1)
+        self.assertEqual(len(valid["bulgwang-miseong"]), 1)
         self.assertEqual(invalid, [])
 
     def test_candidate_analyzer_class_classifies_and_limits_approved_candidates(self) -> None:
