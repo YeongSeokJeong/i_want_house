@@ -1,6 +1,6 @@
 # JeonseLoop
 
-JeonseLoop는 관심 아파트 단지의 전세 매물과 실거래 기준선을 주기적으로 수집하고, 급매 후보를 판정해 Telegram 알림과 Git 저장소 기반 상태 파일로 남기는 개인용 무인 감시 루프입니다.
+JeonseLoop는 관심 아파트 단지의 매매/전세 매물과 실거래 기준선을 주기적으로 수집하고, 급매 후보를 판정해 Telegram 알림과 Git 저장소 기반 상태 파일로 남기는 개인용 무인 감시 루프입니다.
 
 이 저장소는 별도 DB 없이 JSON/Markdown 파일을 상태 저장소로 사용하고, GitHub Actions와 GitHub Pages 정적 대시보드로 운영하는 것을 목표로 합니다.
 
@@ -124,7 +124,6 @@ Workflow: `.github/workflows/jeonseloop.yml`
 필요한 repository secrets:
 
 ```text
-JEONSELOOP_LISTING_SOURCE_URL
 TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID
 ```
@@ -133,6 +132,12 @@ TELEGRAM_CHAT_ID
 
 ```text
 JEONSELOOP_TRADE_SOURCE_URL
+JEONSELOOP_LISTING_SOURCE_URL
+JEONSELOOP_LISTING_SOURCE_KIND
+JEONSELOOP_HOGANGNONO_APT_HASH_MAP
+JEONSELOOP_HOGANGNONO_TRADE_TYPES
+JEONSELOOP_HOGANGNONO_PAGE_SIZE
+JEONSELOOP_HOGANGNONO_MAX_PAGES
 JEONSELOOP_SOURCE_BEARER_TOKEN
 JEONSELOOP_SOURCE_TIMEOUT_SECONDS
 OPENAI_API_KEY
@@ -160,7 +165,7 @@ JEONSELOOP_LLM_MODEL=gpt-4.1
 
 ## 실서비스 데이터 소스 설정
 
-fixture 없이 실행하는 운영 루프는 live 매물 소스가 필요합니다. `JEONSELOOP_LISTING_SOURCE_URL`이 없으면 빈 수집을 성공으로 처리하지 않고 `listing_source_unconfigured` health 실패를 기록합니다.
+fixture 없이 실행하는 운영 루프는 live 매물 소스가 필요합니다. `JEONSELOOP_LISTING_SOURCE_KIND=hogangnono` 또는 `JEONSELOOP_LISTING_SOURCE_URL`이 없으면 빈 수집을 성공으로 처리하지 않고 `listing_source_unconfigured` health 실패를 기록합니다.
 
 지원하는 HTTP JSON 계약:
 
@@ -238,3 +243,39 @@ Get-Content .codex\prompts\loop-review.md -Raw | codex exec --sandbox read-only 
 - GitHub Pages가 원하는 branch/path를 서빙하는지
 - Telegram secrets가 정확하고 `--send` 실행 시 실제 메시지가 도착하는지
 - 외부 매물/실거래 데이터 소스 접근 정책과 응답이 유효한지
+## 호갱노노 매물 수집 설정
+
+정기 실행에서 호갱노노 매매 매물을 수집하려면 GitHub repository variables에 다음 값을 넣습니다.
+
+```text
+JEONSELOOP_LISTING_SOURCE_KIND=hogangnono
+JEONSELOOP_HOGANGNONO_APT_HASH_MAP={"baengnyeonsan-hillstate-3":"E152","bulgwang-miseong":"B11b"}
+JEONSELOOP_HOGANGNONO_TRADE_TYPES=0
+JEONSELOOP_HOGANGNONO_PAGE_SIZE=50
+JEONSELOOP_HOGANGNONO_MAX_PAGES=3
+```
+
+- `JEONSELOOP_HOGANGNONO_APT_HASH_MAP`은 watchlist의 `complex_id`를 호갱노노 아파트 해시로 연결하는 JSON 객체입니다.
+- watchlist `complex_id`가 `E152`처럼 호갱노노 해시 자체이면 매핑 없이도 조회할 수 있습니다.
+- `JEONSELOOP_HOGANGNONO_TRADE_TYPES=0`은 매매 매물을 뜻합니다.
+- 호갱노노 수집은 공개 JSON 응답에 대한 best-effort 방식입니다. HTTP 429, 로그인 요구, 구조 변경이 발생하면 우회하지 않고 실패로 기록합니다.
+- 실패 시 이전 정상 `data/listings`와 `data/history` 상태는 보존하고, `data/state/collector-diagnostics.json`에 진단 정보를 남깁니다.
+
+## 네이버부동산 웹 수집 설정
+
+정기 실행에서 네이버부동산을 직접 수집하려면 GitHub repository variables에 다음 값을 넣습니다.
+
+```text
+JEONSELOOP_LISTING_SOURCE_KIND=naver
+JEONSELOOP_NAVER_COMPLEX_NO_MAP={"sample-apt":"111515"}
+JEONSELOOP_NAVER_TRADE_TYPE=A1
+JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT
+JEONSELOOP_NAVER_MAX_PAGES=3
+```
+
+- `JEONSELOOP_NAVER_COMPLEX_NO_MAP`은 watchlist의 `complex_id`를 네이버 단지번호로 연결하는 JSON 객체입니다.
+- `JEONSELOOP_NAVER_TRADE_TYPE=A1`은 매매 매물을 뜻합니다. 전세로 바꾸려면 `B1`을 사용합니다.
+- 네이버부동산 수집은 공개 응답에 대한 best-effort 방식입니다. HTTP 429, CAPTCHA, 로그인 요구, 구조 변경이 발생하면 우회하지 않고 실패로 기록합니다.
+- 실패 시 이전 정상 `data/listings`와 `data/history` 상태는 보존하고, `data/state/collector-diagnostics.json`에 진단 정보를 남깁니다.
+
+수집 실패 후 보고서를 만들려면 GitHub Actions의 `Collector Recovery` workflow를 수동 실행하고, 실패한 `JeonseLoop` run ID를 `run_id`에 입력합니다. 이 workflow는 `collector-diagnostics` artifact를 내려받아 `collector-recovery-report` artifact를 생성합니다. 이 보고서는 수정 후보를 검토하기 위한 자료이며 `main`에 자동 push하지 않습니다.

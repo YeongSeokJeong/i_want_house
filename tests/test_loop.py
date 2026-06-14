@@ -34,8 +34,10 @@ class LoopTests(unittest.TestCase):
             self.assertEqual(result["counts"]["approved_candidates"], 1)
             self.assertEqual(result["counts"]["notifications_sent"], 0)
             self.assertTrue((root / "data" / "state" / "health.json").exists())
-            self.assertTrue((root / "data" / "listings" / "sample-apt.json").exists())
-            self.assertTrue((root / "data" / "history" / "sample-apt.json").exists())
+            self.assertTrue((root / "data" / "listings" / "baengnyeonsan-hillstate-3.json").exists())
+            self.assertTrue((root / "data" / "listings" / "bulgwang-miseong.json").exists())
+            self.assertTrue((root / "data" / "history" / "baengnyeonsan-hillstate-3.json").exists())
+            self.assertTrue((root / "data" / "history" / "bulgwang-miseong.json").exists())
             self.assertTrue((root / "logs" / "criteria-log.md").exists())
 
             notified = json.loads((root / "data" / "state" / "notified.json").read_text(encoding="utf-8"))

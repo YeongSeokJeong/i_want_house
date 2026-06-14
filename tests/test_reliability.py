@@ -17,7 +17,17 @@ from jeonseloop.analyzer import (
 from jeonseloop.collector import ListingSourceNotConfiguredError, TransientListingFetchError, collect_listings
 from jeonseloop.loop import LoopOptions, run_cycle
 from jeonseloop.persistence import write_failure_health
-from jeonseloop.sources import HttpJsonSourceClient, HttpJsonSourceConfig, TransientSourceFetchError
+from jeonseloop.sources import (
+    HogangnonoListingSourceClient,
+    HogangnonoSourceConfig,
+    HttpJsonSourceClient,
+    HttpJsonSourceConfig,
+    NaverListingSourceClient,
+    NaverSourceConfig,
+    SourceFetchError,
+    TransientSourceFetchError,
+    listing_fetcher_from_env,
+)
 from jeonseloop.trades import load_trade_baselines
 from jeonseloop.watchlist import WatchTarget
 
@@ -140,6 +150,187 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(records[0]["complex_id"], "sample-apt")
         self.assertEqual(records[0]["listing_id"], "live-1")
 
+    def test_listing_source_kind_defaults_to_http_json_when_url_is_present(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_URL": "https://source.example/listings"})
+
+        self.assertIsNotNone(fetcher)
+
+    def test_naver_source_kind_requires_complex_number_mapping_for_named_targets(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "naver"})
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_NAVER_COMPLEX_NO_MAP"):
+            assert fetcher is not None
+            fetcher(TARGET)
+
+    def test_naver_source_kind_accepts_numeric_watchlist_complex_id(self) -> None:
+        seen_urls: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            seen_urls.append(req.full_url)
+            return _JsonResponse({"articleList": [], "isMoreData": False})
+
+        client = NaverListingSourceClient(NaverSourceConfig({}), opener=opener)
+        numeric_target = WatchTarget("111515", "Numeric Complex", 84.9, 850000000)
+
+        records = client.fetch_listings(numeric_target)
+
+        self.assertEqual(records, [])
+        self.assertIn("/api/articles/complex/111515?", seen_urls[0])
+
+    def test_naver_listing_source_normalizes_article_payload(self) -> None:
+        requests: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            requests.append(req.full_url)
+            return _JsonResponse(
+                {
+                    "articleList": [
+                        {
+                            "articleNo": "2512345678",
+                            "articleName": "Sample Apartment",
+                            "realEstateTypeName": "아파트",
+                            "tradeTypeName": "전세",
+                            "floorInfo": "12/25",
+                            "dealOrWarrantPrc": "8억 3,000",
+                            "area2": 84.9,
+                            "buildingName": "101동",
+                            "articleConfirmYmd": "20260614",
+                            "articleFeatureDesc": "확인매물",
+                        }
+                    ],
+                    "isMoreData": False,
+                }
+            )
+
+        client = NaverListingSourceClient(
+            NaverSourceConfig({"sample-apt": "111515"}, max_pages=5),
+            opener=opener,
+        )
+
+        records = client.fetch_listings(TARGET)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(len(requests), 1)
+        self.assertIn("tradeType=B1", requests[0])
+        self.assertEqual(records[0]["listing_id"], "naver:2512345678")
+        self.assertEqual(records[0]["complex_id"], "sample-apt")
+        self.assertEqual(records[0]["price_krw"], 830000000)
+        self.assertEqual(records[0]["area_m2"], 84.9)
+        self.assertEqual(records[0]["floor"], "12/25")
+        self.assertEqual(records[0]["posted_at"], "2026-06-14")
+        self.assertEqual(records[0]["link"], "https://new.land.naver.com/complexes/111515?articleNo=2512345678")
+
+    def test_naver_listing_source_treats_bad_payload_as_source_failure(self) -> None:
+        def opener(req, timeout: int) -> object:
+            return _JsonResponse({"unexpected": []})
+
+        client = NaverListingSourceClient(
+            NaverSourceConfig({"sample-apt": "111515"}),
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(SourceFetchError, "articleList"):
+            client.fetch_listings(TARGET)
+
+    def test_hogangnono_source_kind_requires_apt_hash_mapping_for_named_targets(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono"})
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_HOGANGNONO_APT_HASH_MAP"):
+            assert fetcher is not None
+            fetcher(TARGET)
+
+    def test_hogangnono_source_kind_accepts_direct_apt_hash(self) -> None:
+        seen_urls: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            seen_urls.append(req.full_url)
+            return _JsonResponse({"data": {"aptItems": [], "aptItemTotalCount": 0}, "status": "success"})
+
+        client = HogangnonoListingSourceClient(HogangnonoSourceConfig({}), opener=opener)
+        hash_target = WatchTarget("E152", "Direct Hash", 84.9, 850000000)
+
+        records = client.fetch_listings(hash_target)
+
+        self.assertEqual(records, [])
+        self.assertIn("/api/v2/apts/E152/items?", seen_urls[0])
+        self.assertIn("tradeTypes=0", seen_urls[0])
+
+    def test_hogangnono_listing_source_normalizes_apt_items_payload(self) -> None:
+        requests: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            requests.append(req.full_url)
+            return _JsonResponse(
+                {
+                    "data": {
+                        "aptItems": [
+                            {
+                                "aptHash": "E152",
+                                "aptName": "Sample Apartment",
+                                "areaHoId": 13424976,
+                                "itemId": 177322,
+                                "itemSource": "coalition",
+                                "tradeType": 0,
+                                "deposit": 130000,
+                                "rent": 0,
+                                "floor": 3,
+                                "sizeM2": 114.65,
+                                "sizeContractM2": 148.34,
+                                "areaBuildingName": "302동",
+                                "itemTitle": "조용하고 공기좋은 리조트느낌",
+                                "description": "확인 매물",
+                                "effectivenessUpdatedAt": "2026-06-03T10:54:09.000Z",
+                            }
+                        ],
+                        "aptItemTotalCount": 1,
+                    },
+                    "status": "success",
+                }
+            )
+
+        client = HogangnonoListingSourceClient(
+            HogangnonoSourceConfig({"sample-apt": "E152"}, page_size=10, max_pages=2),
+            opener=opener,
+        )
+
+        records = client.fetch_listings(TARGET)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(len(requests), 1)
+        self.assertIn("tradeTypes=0", requests[0])
+        self.assertIn("offset=0", requests[0])
+        self.assertIn("limit=10", requests[0])
+        self.assertEqual(records[0]["listing_id"], "hogangnono:177322")
+        self.assertEqual(records[0]["complex_id"], "sample-apt")
+        self.assertEqual(records[0]["price_krw"], 1300000000)
+        self.assertEqual(records[0]["area_m2"], 114.65)
+        self.assertEqual(records[0]["floor"], "3")
+        self.assertEqual(records[0]["posted_at"], "2026-06-03")
+        self.assertEqual(records[0]["source"], "hogangnono")
+        self.assertEqual(records[0]["link"], "https://hogangnono.com/apt/E152/item-catalog/13424976/0")
+
+    def test_hogangnono_listing_source_treats_bad_payload_as_source_failure(self) -> None:
+        def opener(req, timeout: int) -> object:
+            return _JsonResponse({"data": {"unexpected": []}, "status": "success"})
+
+        client = HogangnonoListingSourceClient(
+            HogangnonoSourceConfig({"sample-apt": "E152"}),
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(SourceFetchError, "aptItems"):
+            client.fetch_listings(TARGET)
+
+    def test_invalid_listing_source_kind_is_reported_as_source_error(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "unknown"})
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "unsupported JEONSELOOP_LISTING_SOURCE_KIND"):
+            assert fetcher is not None
+            fetcher(TARGET)
+
     def test_http_json_trade_source_can_feed_baseline_repository(self) -> None:
         def opener(req, timeout: int) -> object:
             self.assertEqual(req.full_url, "https://source.example/trades/sample-apt")
@@ -234,6 +425,108 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(health["latest"]["reason"], "listing_source_unconfigured")
         self.assertFalse((root / "data" / "listings" / "sample-apt.json").exists())
 
+    def test_cycle_records_missing_naver_complex_mapping_as_collector_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            previous_listing = root / "data" / "listings" / "sample-apt.json"
+            previous_listing.parent.mkdir(parents=True)
+            previous_listing.write_text('{"listings":[{"listing_id":"previous"}]}', encoding="utf-8")
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "JEONSELOOP_LISTING_SOURCE_KIND": "naver",
+                    "JEONSELOOP_SOURCE_BEARER_TOKEN": "secret-token",
+                },
+                clear=True,
+            ):
+                result = run_cycle(
+                    LoopOptions(
+                        watchlist_path=ROOT / "config" / "watchlist.yaml",
+                        data_dir=root / "data",
+                        logs_dir=root / "logs",
+                        dry_run=False,
+                        allow_send=False,
+                    )
+                )
+
+            health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+            diagnostics = json.loads(
+                (root / "data" / "state" / "collector-diagnostics.json").read_text(encoding="utf-8")
+            )
+            preserved_listing_text = previous_listing.read_text(encoding="utf-8")
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["reason"], "collector_failed")
+        self.assertIn("JEONSELOOP_NAVER_COMPLEX_NO_MAP", result["error"])
+        self.assertEqual(health["latest"]["reason"], "collector_failed")
+        self.assertEqual(diagnostics["source_kind"], "naver")
+        self.assertEqual(diagnostics["failure_stage"], "listing_collection")
+        self.assertEqual(
+            diagnostics["targets"],
+            [{"complex_id": "baengnyeonsan-hillstate-3"}, {"complex_id": "bulgwang-miseong"}],
+        )
+        self.assertNotIn("secret-token", json.dumps(diagnostics))
+        self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
+
+    def test_cycle_records_missing_hogangnono_hash_mapping_as_collector_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            previous_listing = root / "data" / "listings" / "sample-apt.json"
+            previous_listing.parent.mkdir(parents=True)
+            previous_listing.write_text('{"listings":[{"listing_id":"previous"}]}', encoding="utf-8")
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono",
+                    "JEONSELOOP_SOURCE_BEARER_TOKEN": "secret-token",
+                },
+                clear=True,
+            ):
+                result = run_cycle(
+                    LoopOptions(
+                        watchlist_path=ROOT / "config" / "watchlist.yaml",
+                        data_dir=root / "data",
+                        logs_dir=root / "logs",
+                        dry_run=False,
+                        allow_send=False,
+                    )
+                )
+
+            health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+            diagnostics = json.loads(
+                (root / "data" / "state" / "collector-diagnostics.json").read_text(encoding="utf-8")
+            )
+            preserved_listing_text = previous_listing.read_text(encoding="utf-8")
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["reason"], "collector_failed")
+        self.assertIn("JEONSELOOP_HOGANGNONO_APT_HASH_MAP", result["error"])
+        self.assertEqual(health["latest"]["reason"], "collector_failed")
+        self.assertEqual(diagnostics["source_kind"], "hogangnono")
+        self.assertEqual(diagnostics["failure_stage"], "listing_collection")
+        self.assertNotIn("secret-token", json.dumps(diagnostics))
+        self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
+
+    def test_failure_diagnostics_redacts_sensitive_fields(self) -> None:
+        from jeonseloop.persistence import sanitize_diagnostics
+
+        sanitized = sanitize_diagnostics(
+            {
+                "Authorization": "Bearer raw-secret",
+                "message": "url=https://example.invalid?token=raw-secret&ok=1",
+                "nested": {"api_key": "raw-secret"},
+            }
+        )
+
+        text = json.dumps(sanitized)
+        self.assertNotIn("raw-secret", text)
+        self.assertEqual(sanitized["Authorization"], "[redacted]")
+        self.assertEqual(sanitized["nested"]["api_key"], "[redacted]")
+
     def test_health_tracks_failure_streak_and_last_success(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             data_dir = Path(temp_dir) / "data"
@@ -323,7 +616,7 @@ class ReliabilityTests(unittest.TestCase):
             root = Path(temp_dir)
             history_dir = root / "data" / "history"
             history_dir.mkdir(parents=True)
-            (history_dir / "sample-apt.json").write_text(
+            (history_dir / "baengnyeonsan-hillstate-3.json").write_text(
                 json.dumps({"history": [{"average_price_krw": 1200000000}]}),
                 encoding="utf-8",
             )
@@ -345,14 +638,14 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(result["reason"], "data_quality_blocked")
         self.assertEqual(result["counts"]["data_quality_blocks"], 1)
         self.assertEqual(health["failure_streak"], 1)
-        self.assertFalse((root / "data" / "listings" / "sample-apt.json").exists())
+        self.assertFalse((root / "data" / "listings" / "baengnyeonsan-hillstate-3.json").exists())
 
     def test_cycle_persists_recent_trade_baseline_in_history(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             trades_dir = root / "data" / "trades"
             trades_dir.mkdir(parents=True)
-            (trades_dir / "sample-apt.json").write_text(
+            (trades_dir / "baengnyeonsan-hillstate-3.json").write_text(
                 json.dumps({"trades": [{"price_krw": 930000000}, {"price_krw": 920000000}]}),
                 encoding="utf-8",
             )
@@ -368,7 +661,9 @@ class ReliabilityTests(unittest.TestCase):
                 )
             )
 
-            history = json.loads((root / "data" / "history" / "sample-apt.json").read_text(encoding="utf-8"))
+            history = json.loads(
+                (root / "data" / "history" / "baengnyeonsan-hillstate-3.json").read_text(encoding="utf-8")
+            )
 
         self.assertEqual(result["status"], "success")
         self.assertEqual(history["history"][-1]["recent_trade_price_krw"], 925000000)

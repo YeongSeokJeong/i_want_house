@@ -31,6 +31,15 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       JEONSELOOP_LISTING_SOURCE_URL: ${{ secrets.JEONSELOOP_LISTING_SOURCE_URL }}
+      JEONSELOOP_LISTING_SOURCE_KIND: ${{ vars.JEONSELOOP_LISTING_SOURCE_KIND || secrets.JEONSELOOP_LISTING_SOURCE_KIND || '' }}
+      JEONSELOOP_NAVER_COMPLEX_NO_MAP: ${{ vars.JEONSELOOP_NAVER_COMPLEX_NO_MAP || secrets.JEONSELOOP_NAVER_COMPLEX_NO_MAP || '' }}
+      JEONSELOOP_NAVER_TRADE_TYPE: ${{ vars.JEONSELOOP_NAVER_TRADE_TYPE || 'B1' }}
+      JEONSELOOP_NAVER_REAL_ESTATE_TYPE: ${{ vars.JEONSELOOP_NAVER_REAL_ESTATE_TYPE || 'APT' }}
+      JEONSELOOP_NAVER_MAX_PAGES: ${{ vars.JEONSELOOP_NAVER_MAX_PAGES || '3' }}
+      JEONSELOOP_HOGANGNONO_APT_HASH_MAP: ${{ vars.JEONSELOOP_HOGANGNONO_APT_HASH_MAP || secrets.JEONSELOOP_HOGANGNONO_APT_HASH_MAP || '' }}
+      JEONSELOOP_HOGANGNONO_TRADE_TYPES: ${{ vars.JEONSELOOP_HOGANGNONO_TRADE_TYPES || '0' }}
+      JEONSELOOP_HOGANGNONO_PAGE_SIZE: ${{ vars.JEONSELOOP_HOGANGNONO_PAGE_SIZE || '50' }}
+      JEONSELOOP_HOGANGNONO_MAX_PAGES: ${{ vars.JEONSELOOP_HOGANGNONO_MAX_PAGES || '3' }}
       JEONSELOOP_TRADE_SOURCE_URL: ${{ secrets.JEONSELOOP_TRADE_SOURCE_URL }}
       JEONSELOOP_SOURCE_BEARER_TOKEN: ${{ secrets.JEONSELOOP_SOURCE_BEARER_TOKEN }}
       JEONSELOOP_SOURCE_TIMEOUT_SECONDS: ${{ vars.JEONSELOOP_SOURCE_TIMEOUT_SECONDS || '15' }}
@@ -39,8 +48,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Run tests
@@ -62,6 +71,13 @@ jobs:
           fi
           python -m jeonseloop.run $args
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+      - name: Upload collector diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: collector-diagnostics
+          path: data/state/collector-diagnostics.json
+          if-no-files-found: ignore
       - name: Persist loop state
         if: steps.run-loop.outputs.dry_run == 'false'
         run: |

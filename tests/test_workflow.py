@@ -5,6 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "jeonseloop.yml"
+RECOVERY_WORKFLOW = ROOT / ".github" / "workflows" / "collector-recovery.yml"
 
 
 class WorkflowTests(unittest.TestCase):
@@ -51,8 +52,45 @@ class WorkflowTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("JEONSELOOP_LISTING_SOURCE_URL: ${{ secrets.JEONSELOOP_LISTING_SOURCE_URL }}", text)
+        self.assertIn(
+            "JEONSELOOP_LISTING_SOURCE_KIND: ${{ vars.JEONSELOOP_LISTING_SOURCE_KIND || secrets.JEONSELOOP_LISTING_SOURCE_KIND || '' }}",
+            text,
+        )
+        self.assertIn(
+            "JEONSELOOP_NAVER_COMPLEX_NO_MAP: ${{ vars.JEONSELOOP_NAVER_COMPLEX_NO_MAP || secrets.JEONSELOOP_NAVER_COMPLEX_NO_MAP || '' }}",
+            text,
+        )
+        self.assertIn("JEONSELOOP_NAVER_TRADE_TYPE: ${{ vars.JEONSELOOP_NAVER_TRADE_TYPE || 'B1' }}", text)
+        self.assertIn("JEONSELOOP_NAVER_REAL_ESTATE_TYPE: ${{ vars.JEONSELOOP_NAVER_REAL_ESTATE_TYPE || 'APT' }}", text)
+        self.assertIn("JEONSELOOP_NAVER_MAX_PAGES: ${{ vars.JEONSELOOP_NAVER_MAX_PAGES || '3' }}", text)
+        self.assertIn(
+            "JEONSELOOP_HOGANGNONO_APT_HASH_MAP: ${{ vars.JEONSELOOP_HOGANGNONO_APT_HASH_MAP || secrets.JEONSELOOP_HOGANGNONO_APT_HASH_MAP || '' }}",
+            text,
+        )
+        self.assertIn("JEONSELOOP_HOGANGNONO_TRADE_TYPES: ${{ vars.JEONSELOOP_HOGANGNONO_TRADE_TYPES || '0' }}", text)
+        self.assertIn("JEONSELOOP_HOGANGNONO_PAGE_SIZE: ${{ vars.JEONSELOOP_HOGANGNONO_PAGE_SIZE || '50' }}", text)
+        self.assertIn("JEONSELOOP_HOGANGNONO_MAX_PAGES: ${{ vars.JEONSELOOP_HOGANGNONO_MAX_PAGES || '3' }}", text)
         self.assertIn("JEONSELOOP_TRADE_SOURCE_URL: ${{ secrets.JEONSELOOP_TRADE_SOURCE_URL }}", text)
         self.assertIn("JEONSELOOP_SOURCE_BEARER_TOKEN: ${{ secrets.JEONSELOOP_SOURCE_BEARER_TOKEN }}", text)
+
+    def test_workflow_uploads_collector_diagnostics_on_failure(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("Upload collector diagnostics", text)
+        self.assertIn("if: failure()", text)
+        self.assertIn("actions/upload-artifact@v7", text)
+        self.assertIn("name: collector-diagnostics", text)
+        self.assertIn("path: data/state/collector-diagnostics.json", text)
+
+    def test_collector_recovery_workflow_generates_reviewable_report(self) -> None:
+        text = RECOVERY_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("workflow_dispatch:", text)
+        self.assertIn("run_id:", text)
+        self.assertIn("actions/download-artifact@v8", text)
+        self.assertIn("name: collector-diagnostics", text)
+        self.assertIn("collector-recovery-report.md", text)
+        self.assertNotIn("git push", text)
 
 
 if __name__ == "__main__":

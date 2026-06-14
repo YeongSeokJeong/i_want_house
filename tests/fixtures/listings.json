@@ -2,10 +2,10 @@
   "listings": [
     {
       "listing_id": "listing-1",
-      "complex_id": "sample-apt",
-      "title": "Sample low price listing",
+      "complex_id": "baengnyeonsan-hillstate-3",
+      "title": "백련산힐스테이트3차 low price listing",
       "price_krw": 830000000,
-      "area_m2": 84.9,
+      "area_m2": 78.87,
       "building": "101",
       "floor": 12,
       "posted_at": "2026-06-11",
@@ -14,10 +14,10 @@
     },
     {
       "listing_id": "listing-2",
-      "complex_id": "sample-apt",
-      "title": "Sample high price listing",
+      "complex_id": "bulgwang-miseong",
+      "title": "불광 미성아파트 high price listing",
       "price_krw": 910000000,
-      "area_m2": 84.9,
+      "area_m2": 86.47,
       "building": "102",
       "floor": 8,
       "posted_at": "2026-06-11",
