@@ -75,10 +75,10 @@
   - Produce a deterministic repair report and optionally a branch/PR candidate when enabled.
   - Keep automatic changes reviewable.
 - Acceptance Criteria:
-  - [ ] Actions upload diagnostics when collection fails.
-  - [ ] Recovery workflow can be manually dispatched against a failed run artifact.
-  - [ ] The workflow does not push to `main` directly.
-  - [ ] Tests or static checks verify workflow wiring.
+  - [x] Actions upload diagnostics when collection fails.
+  - [x] Recovery workflow can be manually dispatched against a failed run artifact.
+  - [x] The workflow does not push to `main` directly.
+  - [x] Tests or static checks verify workflow wiring.
 - Out of Scope:
   - Fully autonomous merge/deploy to production.
 

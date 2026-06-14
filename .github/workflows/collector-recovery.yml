@@ -1,0 +1,79 @@
+name: Collector Recovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Failed JeonseLoop run ID that uploaded collector diagnostics"
+        required: true
+
+jobs:
+  recovery-report:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Download collector diagnostics
+        uses: actions/download-artifact@v8
+        with:
+          name: collector-diagnostics
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: recovery-input
+      - name: Generate recovery report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          source = Path("recovery-input/collector-diagnostics.json")
+          report_dir = Path("recovery-report")
+          report_dir.mkdir(exist_ok=True)
+          report = report_dir / "collector-recovery-report.md"
+
+          if not source.exists():
+              raise SystemExit("collector diagnostics artifact was not found")
+
+          diagnostics = json.loads(source.read_text(encoding="utf-8"))
+          lines = [
+              "# Collector Recovery Report",
+              "",
+              f"- run_id: {diagnostics.get('run_id')}",
+              f"- source_kind: {diagnostics.get('source_kind')}",
+              f"- failure_stage: {diagnostics.get('failure_stage')}",
+              f"- error_type: {diagnostics.get('error_type')}",
+              f"- run_reason: {diagnostics.get('run_reason')}",
+              "",
+              "## Error",
+              "",
+              "```text",
+              str(diagnostics.get("error", "")),
+              "```",
+              "",
+              "## Targets",
+              "",
+          ]
+          for target in diagnostics.get("targets", []):
+              lines.append(f"- {target.get('complex_id')}")
+          lines.extend(
+              [
+                  "",
+                  "## Recommended Review",
+                  "",
+                  "- Check whether the source returned HTTP 429, HTTP 4xx, invalid JSON, or a schema change.",
+                  "- If the source is Naver and access was rate-limited, adjust schedule or operator configuration rather than bypassing access controls.",
+                  "- If the payload schema changed, update fixture-backed parser tests before changing the adapter.",
+              ]
+          )
+          report.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+      - name: Upload recovery report
+        uses: actions/upload-artifact@v7
+        with:
+          name: collector-recovery-report
+          path: recovery-report/collector-recovery-report.md

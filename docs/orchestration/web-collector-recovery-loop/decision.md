@@ -12,6 +12,7 @@
 | 1 | F-001 | Collector source contract | Select Naver through `JEONSELOOP_LISTING_SOURCE_KIND=naver` and map watchlist IDs with `JEONSELOOP_NAVER_COMPLEX_NO_MAP` | The existing watchlist ID may be a stable local ID rather than Naver's numeric complex number | Supports both local stable IDs and numeric Naver IDs without hard-coding operator data | 2026-06-14 |
 | 1 | F-002 | Naver listing adapter | Use fixture-backed parser validation and treat live 429 as transient source failure | Live Naver access is environment-sensitive and must not be bypassed | Adapter can be tested deterministically while runtime failures flow into diagnostics | 2026-06-14 |
 | 1 | F-003 | Failure diagnostics | Store sanitized collector diagnostics in `data/state/collector-diagnostics.json` | Recovery automation needs stable evidence independent of GitHub log retention | Failed runs can upload or inspect diagnostics without replacing previous listing snapshots | 2026-06-14 |
+| 1 | F-004 | Actions recovery workflow | Add a manual recovery-report workflow instead of auto-pushing fixes | Reviewable repair evidence is safer than direct self-modification | Failed loop runs can upload diagnostics, and operators can generate a recovery report by run ID | 2026-06-14 |
 
 ## Session 1
 - Feature ID: PLAN

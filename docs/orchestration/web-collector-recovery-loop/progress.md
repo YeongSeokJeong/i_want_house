@@ -21,7 +21,7 @@
 | F-001 | Collector source contract | DONE | 1 | - | 2026-06-14 |
 | F-002 | Naver listing adapter | DONE | 1 | - | 2026-06-14 |
 | F-003 | Failure diagnostics | DONE | 1 | - | 2026-06-14 |
-| F-004 | Actions recovery workflow | TODO | 1 | - | 2026-06-14 |
+| F-004 | Actions recovery workflow | DONE | 1 | - | 2026-06-14 |
 | F-005 | Operator documentation | TODO | 1 | - | 2026-06-14 |
 
 ## Session Log
@@ -31,11 +31,12 @@
 | 1 | F-001 | Collector source contract | Done | - | 2026-06-14 |
 | 1 | F-002 | Naver listing adapter | Done | - | 2026-06-14 |
 | 1 | F-003 | Failure diagnostics | Done | - | 2026-06-14 |
+| 1 | F-004 | Actions recovery workflow | Done | - | 2026-06-14 |
 
 ## Next Session Instructions
-- Next Feature ID: F-004
-- Next Feature: Actions recovery workflow
-- Description: Upload collector diagnostics from failed scheduled runs and add a reviewable recovery workflow/report path.
-- Key Files: `.github/workflows/jeonseloop.yml`, `.github/workflows/collector-recovery.yml`, `tests/test_workflow.py`
+- Next Feature ID: F-005
+- Next Feature: Operator documentation
+- Description: Document Naver source setup, limitations, and the recovery report workflow for operators in Korean.
+- Key Files: `README.md`, `.env.example`, `docs/wiki/domains/jeonseloop/overview.md`, `docs/orchestration/web-collector-recovery-loop/`
 - Dependencies Ready: yes
 - Known Issues: Live Naver request from the local environment returned HTTP 429, so diagnostics need to preserve this evidence without attempting bypass behavior.

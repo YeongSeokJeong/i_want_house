@@ -44,8 +44,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       PYTHONPATH: src
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Run tests
@@ -67,6 +67,13 @@ jobs:
           fi
           python -m jeonseloop.run $args
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+      - name: Upload collector diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: collector-diagnostics
+          path: data/state/collector-diagnostics.json
+          if-no-files-found: ignore
       - name: Persist loop state
         if: steps.run-loop.outputs.dry_run == 'false'
         run: |
