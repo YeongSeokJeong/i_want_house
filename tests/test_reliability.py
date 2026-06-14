@@ -20,6 +20,8 @@ from jeonseloop.persistence import write_failure_health
 from jeonseloop.sources import (
     HttpJsonSourceClient,
     HttpJsonSourceConfig,
+    NaverListingSourceClient,
+    NaverSourceConfig,
     SourceFetchError,
     TransientSourceFetchError,
     listing_fetcher_from_env,
@@ -160,13 +162,74 @@ class ReliabilityTests(unittest.TestCase):
             fetcher(TARGET)
 
     def test_naver_source_kind_accepts_numeric_watchlist_complex_id(self) -> None:
-        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "naver"})
+        seen_urls: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            seen_urls.append(req.full_url)
+            return _JsonResponse({"articleList": [], "isMoreData": False})
+
+        client = NaverListingSourceClient(NaverSourceConfig({}), opener=opener)
         numeric_target = WatchTarget("111515", "Numeric Complex", 84.9, 850000000)
 
-        self.assertIsNotNone(fetcher)
-        with self.assertRaisesRegex(SourceFetchError, "not implemented yet"):
-            assert fetcher is not None
-            fetcher(numeric_target)
+        records = client.fetch_listings(numeric_target)
+
+        self.assertEqual(records, [])
+        self.assertIn("/api/articles/complex/111515?", seen_urls[0])
+
+    def test_naver_listing_source_normalizes_article_payload(self) -> None:
+        requests: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            requests.append(req.full_url)
+            return _JsonResponse(
+                {
+                    "articleList": [
+                        {
+                            "articleNo": "2512345678",
+                            "articleName": "Sample Apartment",
+                            "realEstateTypeName": "아파트",
+                            "tradeTypeName": "전세",
+                            "floorInfo": "12/25",
+                            "dealOrWarrantPrc": "8억 3,000",
+                            "area2": 84.9,
+                            "buildingName": "101동",
+                            "articleConfirmYmd": "20260614",
+                            "articleFeatureDesc": "확인매물",
+                        }
+                    ],
+                    "isMoreData": False,
+                }
+            )
+
+        client = NaverListingSourceClient(
+            NaverSourceConfig({"sample-apt": "111515"}, max_pages=5),
+            opener=opener,
+        )
+
+        records = client.fetch_listings(TARGET)
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(len(requests), 1)
+        self.assertIn("tradeType=B1", requests[0])
+        self.assertEqual(records[0]["listing_id"], "naver:2512345678")
+        self.assertEqual(records[0]["complex_id"], "sample-apt")
+        self.assertEqual(records[0]["price_krw"], 830000000)
+        self.assertEqual(records[0]["area_m2"], 84.9)
+        self.assertEqual(records[0]["floor"], "12/25")
+        self.assertEqual(records[0]["posted_at"], "2026-06-14")
+        self.assertEqual(records[0]["link"], "https://new.land.naver.com/complexes/111515?articleNo=2512345678")
+
+    def test_naver_listing_source_treats_bad_payload_as_source_failure(self) -> None:
+        def opener(req, timeout: int) -> object:
+            return _JsonResponse({"unexpected": []})
+
+        client = NaverListingSourceClient(
+            NaverSourceConfig({"sample-apt": "111515"}),
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(SourceFetchError, "articleList"):
+            client.fetch_listings(TARGET)
 
     def test_invalid_listing_source_kind_is_reported_as_source_error(self) -> None:
         fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "unknown"})

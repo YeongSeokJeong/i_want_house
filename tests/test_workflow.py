@@ -53,6 +53,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("JEONSELOOP_LISTING_SOURCE_URL: ${{ secrets.JEONSELOOP_LISTING_SOURCE_URL }}", text)
         self.assertIn("JEONSELOOP_LISTING_SOURCE_KIND: ${{ vars.JEONSELOOP_LISTING_SOURCE_KIND || '' }}", text)
         self.assertIn("JEONSELOOP_NAVER_COMPLEX_NO_MAP: ${{ vars.JEONSELOOP_NAVER_COMPLEX_NO_MAP || '' }}", text)
+        self.assertIn("JEONSELOOP_NAVER_TRADE_TYPE: ${{ vars.JEONSELOOP_NAVER_TRADE_TYPE || 'B1' }}", text)
+        self.assertIn("JEONSELOOP_NAVER_REAL_ESTATE_TYPE: ${{ vars.JEONSELOOP_NAVER_REAL_ESTATE_TYPE || 'APT' }}", text)
+        self.assertIn("JEONSELOOP_NAVER_MAX_PAGES: ${{ vars.JEONSELOOP_NAVER_MAX_PAGES || '3' }}", text)
         self.assertIn("JEONSELOOP_TRADE_SOURCE_URL: ${{ secrets.JEONSELOOP_TRADE_SOURCE_URL }}", text)
         self.assertIn("JEONSELOOP_SOURCE_BEARER_TOKEN: ${{ secrets.JEONSELOOP_SOURCE_BEARER_TOKEN }}", text)
 

@@ -49,10 +49,10 @@
   - Normalize records to `price_krw`, `area_m2`, `floor`, `link`, and optional metadata.
   - Add fixture-backed tests for representative Naver responses.
 - Acceptance Criteria:
-  - [ ] Adapter returns valid JeonseLoop listing records from a fixture that resembles Naver data.
-  - [ ] Adapter filters records to the watchlist complex and jeonse listing type.
-  - [ ] Adapter handles missing or changed fields as source failures rather than silent success.
-  - [ ] Rate limiting and User-Agent behavior are explicit.
+  - [x] Adapter returns valid JeonseLoop listing records from a fixture that resembles Naver data.
+  - [x] Adapter filters records to the watchlist complex and jeonse listing type.
+  - [x] Adapter handles missing or changed fields as source failures rather than silent success.
+  - [x] Rate limiting and User-Agent behavior are explicit.
 - Out of Scope:
   - CAPTCHA, login, session bypass, stealth automation, or scraping protected content.
 

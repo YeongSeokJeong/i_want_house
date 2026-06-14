@@ -19,7 +19,7 @@
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
 |------------|--------------|--------|--------------|--------|---------|
 | F-001 | Collector source contract | DONE | 1 | - | 2026-06-14 |
-| F-002 | Naver listing adapter | TODO | 1 | - | 2026-06-14 |
+| F-002 | Naver listing adapter | DONE | 1 | - | 2026-06-14 |
 | F-003 | Failure diagnostics | TODO | 1 | - | 2026-06-14 |
 | F-004 | Actions recovery workflow | TODO | 1 | - | 2026-06-14 |
 | F-005 | Operator documentation | TODO | 1 | - | 2026-06-14 |
@@ -29,11 +29,12 @@
 |---------|------------|---------|--------|--------|------|
 | 1 | PLAN | Planning | Done | - | 2026-06-14 |
 | 1 | F-001 | Collector source contract | Done | - | 2026-06-14 |
+| 1 | F-002 | Naver listing adapter | Done | - | 2026-06-14 |
 
 ## Next Session Instructions
-- Next Feature ID: F-002
-- Next Feature: Naver listing adapter
-- Description: Implement fixture-backed Naver listing fetch/normalization using the source mode contract from F-001.
-- Key Files: `src/jeonseloop/sources.py`, `tests/test_reliability.py`, `tests/fixtures/`
+- Next Feature ID: F-003
+- Next Feature: Failure diagnostics
+- Description: Persist sanitized collector diagnostics for source failures and Actions artifact upload without replacing previous good state.
+- Key Files: `src/jeonseloop/sources.py`, `src/jeonseloop/loop.py`, `src/jeonseloop/persistence.py`, `tests/test_reliability.py`, `.github/workflows/jeonseloop.yml`
 - Dependencies Ready: yes
-- Known Issues: Naver endpoint shape is unstable and must be treated as best-effort.
+- Known Issues: Live Naver request from the local environment returned HTTP 429, so diagnostics need to preserve this evidence without attempting bypass behavior.
