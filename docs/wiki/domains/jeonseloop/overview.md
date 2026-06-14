@@ -14,7 +14,7 @@ JeonseLoop는 관심 아파트 단지의 전세 매물, 실거래 기준선, 후
 - 실거래 기준선이 있으면 기준선 할인율로 후보를 판정하고, 없으면 watchlist 목표가로 폴백한다.
 - 후보 품질 관리는 제외 조건, 중복 보류, 알림 상한, LLM 검수 실패 보류를 알림 계획 전에 적용한다.
 - 선택적 LLM 검수는 `OPENAI_API_KEY`와 `JEONSELOOP_LLM_REVIEW=true`가 있을 때만 OpenAI Responses API로 실행하며, 응답 JSON 검증 실패나 네트워크 오류는 후보 보류로 처리한다.
-- 기준 개선 제안은 `data/state/criteria-suggestions.json`으로만 생성하며 `config/watchlist.yaml`은 자동 수정하지 않는다.
+- 기준 개선 제안은 `data/state/criteria-suggestions.json`으로만 생성하며 `config/watchlist.yaml`은 자동 수정하지 않는다. 제안 JSON은 판정 사유 빈도와 LLM 보류, 평균가 급변, 중복 보류 같은 오탐 신호의 건수/비율을 함께 담아 검수 전후 변화를 비교할 수 있게 한다.
 
 ## 관련 문서
 - [[../../rules/workflow/loop-engineering-routing]]

@@ -144,8 +144,61 @@ class LlmReviewTests(unittest.TestCase):
         after = watchlist_path.read_text(encoding="utf-8")
         self.assertIsNotNone(payload)
         self.assertFalse(suggestions["auto_applied"])
+        self.assertEqual(suggestions["metrics"]["total_decisions"], 30)
+        self.assertEqual(suggestions["metrics"]["approved_decisions"], 0)
+        self.assertEqual(suggestions["metrics"]["false_positive_signals"], 0)
+        self.assertEqual(suggestions["metrics"]["false_positive_ratio"], 0.0)
         self.assertTrue(all(item["requires_human_approval"] for item in suggestions["suggestions"]))
         self.assertEqual(after, before)
+
+    def test_criteria_suggestions_track_false_positive_review_signals(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            logs_dir = root / "logs"
+            logs_dir.mkdir()
+            lines = [
+                "# Criteria Log",
+                "",
+                "| time | complex_id | listing_key | decision | reason | price_krw |",
+                "|---|---|---|---|---|---|",
+            ]
+            for index in range(12):
+                lines.append(
+                    f"| 2026-06-13T00:00:00+00:00 | sample-apt | approved-{index} | approve | target_price | 830000000 |"
+                )
+            for index in range(10):
+                lines.append(
+                    f"| 2026-06-13T00:00:00+00:00 | sample-apt | llm-{index} | hold | llm_invalid_response | 830000000 |"
+                )
+            for index in range(5):
+                lines.append(
+                    f"| 2026-06-13T00:00:00+00:00 | sample-apt | jump-{index} | hold | average_price_jump:-23.53% | 650000000 |"
+                )
+            for index in range(3):
+                lines.append(
+                    f"| 2026-06-13T00:00:00+00:00 | sample-apt | rejected-{index} | reject | above_target_price | 900000000 |"
+                )
+            (logs_dir / "criteria-log.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+            payload = write_criteria_suggestions(
+                logs_dir=logs_dir,
+                data_dir=root / "data",
+                generated_at="2026-06-13T00:00:01+00:00",
+            )
+
+        self.assertIsNotNone(payload)
+        assert payload is not None
+        metrics = payload["metrics"]
+        self.assertEqual(metrics["total_decisions"], 30)
+        self.assertEqual(metrics["approved_decisions"], 12)
+        self.assertEqual(metrics["false_positive_signals"], 15)
+        self.assertEqual(metrics["reviewed_decisions"], 27)
+        self.assertEqual(metrics["false_positive_ratio"], 0.5556)
+        self.assertEqual(metrics["false_positive_reason_counts"]["llm_invalid_response"], 10)
+        self.assertEqual(metrics["false_positive_reason_counts"]["average_price_jump:-23.53%"], 5)
+        self.assertEqual(payload["suggestions"][0]["signal"], "false_positive")
+        self.assertEqual(payload["suggestions"][0]["reason"], "llm_invalid_response")
+        self.assertTrue(all(item["requires_human_approval"] for item in payload["suggestions"]))
 
 
 if __name__ == "__main__":
