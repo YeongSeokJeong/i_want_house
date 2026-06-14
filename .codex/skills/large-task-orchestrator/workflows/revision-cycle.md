@@ -14,6 +14,8 @@ This workflow is **documentation-only**. Do not implement code in this flow.
 - `../references/plan-schema.md`
 - `../references/feature-slicing.md`
 - `../checklist/revise.md`
+- [Backlog Management Skill](../../backlog-management/SKILL.md)
+- `../../../../docs/backlog.md` (if present)
 - [Brainstorm Agent](../../../agents/brainstorm.agent.md)
 - [PM Agent](../../../agents/pm.agent.md)
 - [Architecture Agent](../../../agents/architecture.agent.md)
@@ -38,7 +40,8 @@ Read, in order:
 3. `./docs/orchestration/<task-name>/progress.md`
 4. `./docs/orchestration/<task-name>/decision.md`
 5. `./docs/orchestration/<task-name>/architecture.md`
-6. Preserve the existing task branch metadata in `plan.md` and `progress.md`; revisions must not switch branch strategy silently.
+6. `docs/backlog.md` if present, and linked `BL-*` IDs from the orchestration docs.
+7. Preserve the existing task branch metadata in `plan.md` and `progress.md`; revisions must not switch branch strategy silently.
 
 ### Stage 1: Brainstorming
 
@@ -46,16 +49,16 @@ Read, in order:
 |---|---|
 | **Agent** | [Brainstorm Agent](../../../agents/brainstorm.agent.md) |
 | **Goal** | Identify what must change in `plan.md`, `progress.md`, and `decision.md` from new constraints, blockers, or reprioritization |
-| **Output** | Candidate revision set with rationale and impacted feature IDs |
+| **Output** | Candidate revision set with rationale, impacted feature IDs, and impacted backlog IDs |
 
 ### Stage 2: PM Structuring
 
 | | |
 |---|---|
 | **Agent** | [PM Agent](../../../agents/pm.agent.md) |
-| **Goal** | Convert candidate revisions into concrete document updates: sequencing, acceptance criteria, dependencies, and status impacts |
+| **Goal** | Convert candidate revisions into concrete document updates: sequencing, acceptance criteria, dependencies, feature status impacts, and backlog status/link impacts |
 | **Rules** | If plan structure/scope changes, bump `Plan Version` and append revision log entry |
-| **Output** | Finalized revision plan for `plan.md`, `progress.md`, `decision.md` |
+| **Output** | Finalized revision plan for `plan.md`, `progress.md`, `decision.md`, and related backlog rows |
 
 ### Stage 3: Architecture Validation
 
@@ -82,8 +85,10 @@ Apply approved revisions to:
 1. `./docs/orchestration/<task-name>/plan.md`
 2. `./docs/orchestration/<task-name>/progress.md`
 3. `./docs/orchestration/<task-name>/decision.md`
+4. `docs/backlog.md` only when backlog links, routes, statuses, blockers, or deferred follow-ups changed
 
 Keep `Task Branch` synchronized between `plan.md` and `progress.md`.
+Keep `BL-*` links synchronized between `docs/backlog.md`, `plan.md`, and `progress.md`.
 
 Do not perform code implementation, code refactoring, or code commits in this workflow.
 
@@ -95,4 +100,5 @@ Output:
 - changed feature IDs
 - `Plan Version` before/after (if changed)
 - summary of edits in `plan.md`, `progress.md`, `decision.md`
+- summary of related backlog edits, or `None`
 - QA result and unresolved blockers (or `None`)

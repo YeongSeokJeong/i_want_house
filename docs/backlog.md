@@ -1,0 +1,26 @@
+# Backlog
+
+> Last updated: 2026-06-13
+
+저장소의 후속 작업과 완료 결과를 관리한다. 세션 기록이나 진행 로그가 아니라, 다시 찾아 실행할 수 있는 작업 항목만 남긴다.
+
+## 요구사항 기준 진행 요약
+- `jeonseloop-spec.md` 기준 Phase 1~3 구현 묶음은 저장소 안에서 완료 기록이 있다.
+- 현재 재검증 결과 `python -m unittest discover -s tests`는 37개 테스트 통과.
+- 남은 업무의 핵심은 운영 환경 외부 상태 검증, 실서비스 데이터 소스 검증, 정책 결정/튜닝이다.
+
+## Items
+| ID | Status | Route | Task | Context | Created | Completed | Artifact | Result |
+|---|---|---|---|---|---|---|---|---|
+| BL-20260613-001 | Done | skill-agent | 백로그 관리 스킬을 별도로 만들고 문서 라우팅 패턴과 완료 결과 기록 규칙을 적용한다. | 사용자 요청 | 2026-06-13 | 2026-06-13 | `.codex/skills/backlog-management/SKILL.md` | 백로그 상태 관리, 라우팅 패턴, `Done` 처리 시 `Artifact`와 `Result` 기록 규칙을 새 스킬로 분리함. |
+| BL-20260613-002 | Done | source-code | Phase 1 Must 골격 요구사항 구현 상태를 정리한다. | `jeonseloop-spec.md` Phase 1, `docs/handoff/jeonseloop-spec-implementation-final.md` | 2026-06-13 | 2026-06-13 | `docs/handoff/jeonseloop-spec-implementation-final.md`, `src/jeonseloop/`, `tests/` | F-001~F-003 및 관련 Phase 1 요구사항에 대해 실행 루프, 워치리스트 검증, fixture 수집, 후보 판정, dry-run, Telegram send gating, GitHub Actions, 정적 대시보드 골격이 구현됨. 현재 `python -m unittest discover -s tests` 37개 통과. |
+| BL-20260613-003 | Done | source-code | Phase 2 Should 신뢰도 요구사항 구현 상태를 정리한다. | `jeonseloop-spec.md` Phase 2, F-004~F-005 handoff | 2026-06-13 | 2026-06-13 | `docs/handoff/jeonseloop-spec-implementation-final.md`, `src/jeonseloop/`, `tests/test_reliability.py`, `tests/test_candidate_quality.py` | 실거래 기준선, 재시도/요청 간격, 실패 streak, 마지막 성공 상태, 데이터 품질 차단, 중복 보류, 알림 상한, `urgent-feed.json`이 repo-verifiable 범위에서 구현됨. 실서비스 응답은 별도 운영 검증 필요. |
+| BL-20260613-004 | Done | source-code | Phase 3 Could 자가 개선 요구사항 구현 상태를 정리한다. | `jeonseloop-spec.md` Phase 3, F-006 handoff | 2026-06-13 | 2026-06-13 | `src/jeonseloop/review.py`, `src/jeonseloop/suggestions.py`, `tests/test_llm_review.py` | LLM 검수는 기본 비활성, secret 없을 때 미호출, JSON 파싱 실패 시 hold 처리, 기준 개선 제안은 `criteria-suggestions.json`에만 기록하고 `config/watchlist.yaml`은 자동 수정하지 않도록 구현됨. |
+| BL-20260613-005 | Done | wiki-domain | JeonseLoop 제품 도메인 위키 작성 상태를 정리한다. | 구현 closeout wiki 결과 | 2026-06-13 | 2026-06-13 | `docs/wiki/domains/jeonseloop/overview.md`, `docs/wiki/index.md` | `docs/wiki/domains/jeonseloop/overview.md` `## 핵심 내용`에 실행 진입점, 안전한 Telegram 발송 조건, 상태 파일, 대시보드 JSON, 기준선/후보 품질 관리를 기록했고, `## 아키텍처 메모`에 `LoopCoordinator` 중심 모듈 구성을 기록함. `docs/wiki/index.md`에 JeonseLoop 도메인 진입점을 등록함. |
+| BL-20260613-006 | Blocked | operator-doc | 운영 환경 외부 상태를 검증하고 결과를 남긴다. | GitHub Secrets, 실제 Actions 이력, Telegram 실전송, GitHub Pages 배포, 외부 포털/API 응답은 저장소만으로 검증 불가 | 2026-06-13 | - | `README.md`, 운영 실행 결과 또는 별도 검증 메모 | 운영자 권한과 실제 secret/외부 서비스 접근이 필요함. 완료 시 어떤 환경에서 Actions, Pages, Telegram, 외부 데이터 응답을 확인했는지 `Result`에 기록해야 함. |
+| BL-20260613-007 | Todo | source-code | 실서비스 매물/실거래 데이터 어댑터를 검증하고 필요한 보강을 구현한다. | handoff unresolved risk: live external listing and trade adapters are scaffolded but not proven | 2026-06-13 | - | `src/jeonseloop/collector.py`, `src/jeonseloop/trades.py`, 관련 tests | - |
+| BL-20260613-008 | Todo | source-code | `config/watchlist.yaml` 파서의 YAML 지원 범위를 넓힐지 결정하고 필요 시 구현한다. | handoff unresolved risk: 현재 parser는 simple YAML subset 중심 | 2026-06-13 | - | `src/jeonseloop/watchlist.py`, `tests/test_watchlist.py` | - |
+| BL-20260613-009 | Todo | wiki-decision | 요구사항의 `[확인 필요]` 항목을 사람 의사결정 문서로 정리한다. | `jeonseloop-spec.md` 섹션 10: 중복 대표 링크, 개선 제안 승인 경로, 5건 초과 알림 정렬 기준, 급매 피드 데이터 소스 형식 | 2026-06-13 | - | `docs/wiki/decisions/jeonseloop-open-requirement-decisions.md`, `docs/wiki/decisions.md` | - |
+| BL-20260613-010 | Todo | source-code | 실데이터 기반 오탐 측정과 기준 튜닝 루프를 보강한다. | NFR-07, 평균가 급변 threshold, 중복 대표 선택, substring exclusion은 실데이터 튜닝 필요 | 2026-06-13 | - | `src/jeonseloop/analyzer.py`, `src/jeonseloop/suggestions.py`, `logs/criteria-log.md` | - |
+| BL-20260613-011 | Todo | operator-doc | 대시보드 실제 렌더링과 GitHub Pages 접근을 운영 환경에서 검증한다. | 과거 로컬 in-app Browser visual check는 Windows sandbox 문제로 차단됨 | 2026-06-13 | - | `index.html`, `assets/dashboard.js`, GitHub Pages URL 또는 검증 메모 | - |
+| BL-20260613-012 | Done | skill-agent | 백로그 관리 흐름을 `large-task-orchestrator`에 반영한다. | 사용자 요청 | 2026-06-13 | 2026-06-13 | `.codex/skills/large-task-orchestrator/SKILL.md`, `.codex/skills/large-task-orchestrator/workflows/`, `.codex/skills/large-task-orchestrator/checklist/`, `.codex/skills/large-task-orchestrator/references/` | `large-task-orchestrator`의 start/next/status/done/revise 흐름에 `backlog-management` 읽기, `BL-*` 연결, 라우팅 패턴, `Done` 결과 기록, 위키 작성 결과의 파일/섹션/변경 내용 기록 규칙을 반영함. |

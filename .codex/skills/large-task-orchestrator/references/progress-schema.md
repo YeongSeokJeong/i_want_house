@@ -12,6 +12,11 @@
 - Current Session: <N>
 - Last Updated: <date>
 
+## Related Backlog Items
+| Backlog ID | Route | Status | Artifact | Result |
+|------------|-------|--------|----------|--------|
+| BL-YYYYMMDD-001 | source-code | Doing | <path or -> | <summary or -> |
+
 ## Feature Implementation Status
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
 |------------|--------------|--------|--------------|--------|---------|

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backlog Management"
+  short_description: "Manage repo backlog items and completion results"
+  default_prompt: "Use $backlog-management to add, route, start, or close repo backlog items with artifact results."

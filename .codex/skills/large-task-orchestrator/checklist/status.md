@@ -6,7 +6,9 @@ Exit criteria for reporting current project state.
 
 - [ ] `<task-name>` is resolved and `./docs/orchestration/<task-name>/` is selected.
 - [ ] `./docs/orchestration/<task-name>/progress.md` read before any summary output.
+- [ ] Linked backlog IDs are read from `plan.md`/`progress.md` and checked against `docs/backlog.md` when present.
 - [ ] Task branch reported.
+- [ ] Backlog IDs, routes, and statuses reported.
 - [ ] Total features, completed, and remaining counts reported.
 - [ ] Current session number reported.
 - [ ] Last commit hash reported.

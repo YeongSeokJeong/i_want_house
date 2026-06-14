@@ -13,6 +13,8 @@ Use this workflow for:
 - `../references/architecture-schema.md`
 - `../checklist/start.md`
 - [Wiki Write Skill](../../wiki-write/SKILL.md)
+- [Backlog Management Skill](../../backlog-management/SKILL.md)
+- `../../../../docs/backlog.md` (if present)
 - `../../../../docs/wiki/SCHEMA.md` (if present)
 - `../../../../docs/wiki/init.md` (if present)
 - `../../../../docs/wiki/index.md` (if present)
@@ -56,7 +58,16 @@ This workflow owns agent usage for `/large-task-orchestrator start <task-name>`.
 | **Rules** | Use the `wiki-write` skill routing model and inspect `docs/wiki/SCHEMA.md`, `docs/wiki/init.md`, `docs/wiki/index.md`, `docs/wiki/decisions.md`, and relevant `docs/wiki/**` pages before planning. Produce an evidence list of related docs, decisions, reusable rules, and wiki gaps. If durable knowledge should be added or updated, record the proposed wiki target path and defer actual wiki edits to the appropriate orchestration feature or closeout unless the user explicitly asks to update it now. |
 | **Output** | Related wiki evidence list with relevance notes and proposed wiki update targets |
 
-### Stage 3: Brainstorm
+### Stage 3: Backlog Routing and Linkage (backlog-management)
+
+| | |
+|---|---|
+| **Agent** | [PM Agent](../../../agents/pm.agent.md) |
+| **Goal** | Connect the large task to repo-level backlog tracking before feature slicing is finalized |
+| **Rules** | Use `backlog-management` routing patterns. Read `docs/backlog.md` if present, search for duplicate or related `BL-*` items, classify the large task route (`source-code`, `wiki-*`, `operator-doc`, `skill-agent`, `spec`, or `backlog`), then either link an existing backlog item or create a new task-level `Todo` item. Do not treat `docs/backlog.md` as the feature plan; it records work/result status only. |
+| **Output** | Related Backlog Items list with `BL-*` ID, route, status, and whether each item is existing or newly created |
+
+### Stage 4: Brainstorm
 
 | | |
 |---|---|
@@ -64,15 +75,15 @@ This workflow owns agent usage for `/large-task-orchestrator start <task-name>`.
 | **Goal** | Analyze the large task and identify candidate features with stable feature IDs (`F-001..F-00N`) and trade-offs |
 | **Output** | Feature candidates (with IDs) + recommended split |
 
-### Stage 4: PM Planning
+### Stage 5: PM Planning
 
 | | |
 |---|---|
 | **Agent** | [PM Agent](../../../agents/pm.agent.md) |
-| **Goal** | Finalize discrete functional units, assign feature IDs, define acceptance criteria, and produce `plan.md` v1 |
-| **Output** | Ordered feature backlog with IDs + acceptance criteria + plan v1 |
+| **Goal** | Finalize discrete functional units, assign feature IDs, define acceptance criteria, map related `BL-*` IDs, and produce `plan.md` v1 |
+| **Output** | Ordered feature backlog with IDs + acceptance criteria + related backlog IDs + plan v1 |
 
-### Stage 5: Architecture Review
+### Stage 6: Architecture Review
 
 | | |
 |---|---|
@@ -80,7 +91,7 @@ This workflow owns agent usage for `/large-task-orchestrator start <task-name>`.
 | **Goal** | Validate stack fit, boundaries, dependency map, and major risks aligned to feature IDs |
 | **Output** | Architecture decisions and risk register mapped to feature IDs |
 
-### Stage 6: Continuity File Initialization
+### Stage 7: Continuity File Initialization
 
 Create/initialize:
 
@@ -89,7 +100,9 @@ Create/initialize:
 3. `./docs/orchestration/<task-name>/decision.md` from `references/decision-schema.md` (create if missing)
 4. `./docs/orchestration/<task-name>/architecture.md` from `references/architecture-schema.md`
 
-### Stage 7: Plan Revision Policy Initialization
+Record linked `BL-*` IDs and routes in `plan.md` and `progress.md` using the schema sections for related backlog items.
+
+### Stage 8: Plan Revision Policy Initialization
 
 Seed `plan.md` revision controls from Session 1:
 
@@ -98,7 +111,7 @@ Seed `plan.md` revision controls from Session 1:
 - Mark that plan revision is allowed only when scope/constraints/risks change.
 - Any revision must update affected feature IDs in both `plan.md` and `progress.md`.
 
-### Stage 8: Task Branch Initialization
+### Stage 9: Task Branch Initialization
 
 Create one task-scoped working branch for the whole orchestration:
 
@@ -107,11 +120,12 @@ Create one task-scoped working branch for the whole orchestration:
 3. Record the resolved task branch name in both `plan.md` and `progress.md`.
 4. Do not create per-feature branches after this point; feature separation happens by commit.
 
-### Stage 9: Session 1 Summary
+### Stage 10: Session 1 Summary
 
 Output Session 1 summary to chat with:
 
 - task name, task directory, and task branch
+- related backlog IDs and routes
 - feature list (with feature IDs) and execution order
 - acceptance criteria highlights
 - architecture and risk highlights by feature ID
@@ -121,6 +135,7 @@ Output Session 1 summary to chat with:
 
 - Interview-first clarification is completed when start input is sparse/ambiguous.
 - Related wiki discovery is executed from `docs/wiki/` using the `wiki-write` routing model.
+- Related backlog routing is executed using `backlog-management`, and linked `BL-*` IDs are recorded.
 - Features are decomposed into independent functional units.
 - Every feature has a stable feature ID and acceptance criteria.
 - Architecture review is complete and documented with feature-ID mapping.
