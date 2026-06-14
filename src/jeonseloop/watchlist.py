@@ -108,7 +108,7 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
     current_nested_list_key: str | None = None
 
     for line_no, raw_line in enumerate(text.splitlines(), start=1):
-        line = raw_line.split("#", 1)[0].rstrip()
+        line = _strip_yaml_comment(raw_line).rstrip()
         if not line.strip():
             continue
 
@@ -176,10 +176,14 @@ def _split_yaml_key_value(text: str, line_no: int) -> tuple[str, str]:
 
 
 def _parse_scalar(value: str) -> Any:
+    if value.startswith("[") and value.endswith("]"):
+        return _parse_inline_list(value)
+    if value in {"null", "Null", "NULL", "~"}:
+        return None
     if value in {"[]", ""}:
         return [] if value == "[]" else ""
-    if value in {"true", "false"}:
-        return value == "true"
+    if value in {"true", "false", "True", "False", "TRUE", "FALSE"}:
+        return value.lower() == "true"
     if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
         return value[1:-1]
     try:
@@ -190,6 +194,73 @@ def _parse_scalar(value: str) -> Any:
         return float(value)
     except ValueError:
         return value
+
+
+def _strip_yaml_comment(text: str) -> str:
+    quote: str | None = None
+    escaped = False
+    for index, char in enumerate(text):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and quote == '"':
+            escaped = True
+            continue
+        if char in {"'", '"'}:
+            if quote == char:
+                quote = None
+            elif quote is None:
+                quote = char
+            continue
+        if char == "#" and quote is None:
+            return text[:index]
+    return text
+
+
+def _parse_inline_list(value: str) -> list[Any]:
+    body = value[1:-1].strip()
+    if not body:
+        return []
+
+    items: list[Any] = []
+    current: list[str] = []
+    quote: str | None = None
+    escaped = False
+
+    for char in body:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\" and quote == '"':
+            current.append(char)
+            escaped = True
+            continue
+        if char in {"'", '"'}:
+            current.append(char)
+            if quote == char:
+                quote = None
+            elif quote is None:
+                quote = char
+            continue
+        if char == "," and quote is None:
+            items.append(_parse_inline_list_item("".join(current)))
+            current = []
+            continue
+        current.append(char)
+
+    if quote is not None:
+        raise WatchlistError("unterminated quoted scalar in inline list")
+
+    items.append(_parse_inline_list_item("".join(current)))
+    return items
+
+
+def _parse_inline_list_item(value: str) -> Any:
+    item = value.strip()
+    if not item:
+        raise WatchlistError("empty item in inline list")
+    return _parse_scalar(item)
 
 
 def _required_str(item: dict[str, Any], key: str, index: int) -> str:
