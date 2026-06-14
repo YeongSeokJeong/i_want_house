@@ -53,8 +53,8 @@ Use one task-scoped directory per large task:
 10. **Plan revision is allowed, but only with explicit version bump and revision log update in `plan.md`, and MUST run via `/large-task-orchestrator revise <task-name>`.**
 11. **Always update `plan.md`, `progress.md`, `decision.md`, and related backlog items before ending a session, using `/large-task-orchestrator revise <task-name>` when continuity docs need structural updates.**
 12. **`plan.md` must assign stable Feature IDs (for example `F-001`, `F-002`), and `progress.md` must track implementation status by the same IDs.**
-13. **`start` must create exactly one task branch for the whole large task and record it in continuity docs.**
-14. **`next`/`resume` must reuse that recorded task branch; do not create per-feature branches.**
+13. **`start` must ask SCM Agent to request or prepare one dedicated task worktree and one task branch for the whole large task, then record both in continuity docs.**
+14. **`next`/`resume` must reuse the recorded task branch and task worktree; do not create per-feature branches or worktrees.**
 15. **Each feature must land as one feature-scoped commit on the shared task branch before moving to the next feature.**
 16. **Every commit message must follow Conventional Commits and reference the task + feature scope.**
    - Example: `feat(checkout-funnel/f-002): add invoice retry worker`
@@ -95,6 +95,7 @@ If `<task-name>` is missing for the selected command, ask one question:
 
 - Use Conventional Commits.
 - Use the single task branch created by `/large-task-orchestrator start <task-name>`.
+- Use the task worktree recorded by `/large-task-orchestrator start <task-name>` when one is available.
 - Scope must include `<task-name>/<feature-id>`.
 - Each completed feature is represented by one final commit on that task branch.
 - Do not commit feature work without passing tests and QA.

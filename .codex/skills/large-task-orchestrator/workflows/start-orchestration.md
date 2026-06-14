@@ -111,20 +111,24 @@ Seed `plan.md` revision controls from Session 1:
 - Mark that plan revision is allowed only when scope/constraints/risks change.
 - Any revision must update affected feature IDs in both `plan.md` and `progress.md`.
 
-### Stage 9: Task Branch Initialization
+### Stage 9: Task Worktree and Branch Initialization
 
-Create one task-scoped working branch for the whole orchestration:
+Create or select one task-scoped worktree and one task-scoped working branch for the whole orchestration:
 
-1. Use [SCM Agent](../../../agents/scm.agent.md) to create and check out the task branch.
-2. Follow repository branch conventions if they exist; otherwise default to `task/<task-name>`.
-3. Record the resolved task branch name in both `plan.md` and `progress.md`.
-4. Do not create per-feature branches after this point; feature separation happens by commit.
+1. Use [SCM Agent](../../../agents/scm.agent.md) to ask for or propose a dedicated task worktree.
+2. If the current checkout is already the intended task worktree, record the current path instead of creating another worktree.
+3. If the user approves a new worktree, use SCM Agent to create it with a safe `git worktree add <path> <branch>` workflow.
+4. Use [SCM Agent](../../../agents/scm.agent.md) to create and check out the task branch in the selected worktree.
+5. Follow repository branch conventions if they exist; otherwise default to `task/<task-name>`.
+6. Record the resolved task branch name and task worktree path in both `plan.md` and `progress.md`.
+7. Do not create per-feature branches or worktrees after this point; feature separation happens by commit.
 
 ### Stage 10: Session 1 Summary
 
 Output Session 1 summary to chat with:
 
 - task name, task directory, and task branch
+- task worktree path
 - related backlog IDs and routes
 - feature list (with feature IDs) and execution order
 - acceptance criteria highlights
@@ -141,5 +145,5 @@ Output Session 1 summary to chat with:
 - Architecture review is complete and documented with feature-ID mapping.
 - `./docs/orchestration/<task-name>/plan.md`, `./docs/orchestration/<task-name>/progress.md`, `./docs/orchestration/<task-name>/decision.md`, `./docs/orchestration/<task-name>/architecture.md` exist and are initialized.
 - Plan revision policy is explicit in `plan.md`.
-- A single task branch is created and recorded for reuse across sessions.
+- A single task branch and task worktree are selected or created and recorded for reuse across sessions.
 - Session 1 summary is delivered.

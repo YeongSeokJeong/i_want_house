@@ -21,5 +21,7 @@ Exit criteria for initializing a large multi-session task.
 - [ ] `./docs/orchestration/<task-name>/decision.md` initialized (or confirmed existing).
 - [ ] Related `BL-*` IDs and routes are recorded in `plan.md` and `progress.md`.
 - [ ] Plan revision policy is initialized in `plan.md`.
+- [ ] SCM Agent requested or proposed a dedicated task worktree before implementation begins.
+- [ ] A single task worktree is selected or created at start and recorded in `plan.md` and `progress.md`.
 - [ ] A single task branch is created at start and recorded in `plan.md` and `progress.md`.
 - [ ] Session 1 summary posted with prioritized feature order and task branch.

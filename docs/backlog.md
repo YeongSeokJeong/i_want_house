@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-06-13
+> Last updated: 2026-06-14
 
 저장소의 후속 작업과 완료 결과를 관리한다. 세션 기록이나 진행 로그가 아니라, 다시 찾아 실행할 수 있는 작업 항목만 남긴다.
 
@@ -24,3 +24,4 @@
 | BL-20260613-010 | Todo | source-code | 실데이터 기반 오탐 측정과 기준 튜닝 루프를 보강한다. | NFR-07, 평균가 급변 threshold, 중복 대표 선택, substring exclusion은 실데이터 튜닝 필요 | 2026-06-13 | - | `src/jeonseloop/analyzer.py`, `src/jeonseloop/suggestions.py`, `logs/criteria-log.md` | - |
 | BL-20260613-011 | Todo | operator-doc | 대시보드 실제 렌더링과 GitHub Pages 접근을 운영 환경에서 검증한다. | 과거 로컬 in-app Browser visual check는 Windows sandbox 문제로 차단됨 | 2026-06-13 | - | `index.html`, `assets/dashboard.js`, GitHub Pages URL 또는 검증 메모 | - |
 | BL-20260613-012 | Done | skill-agent | 백로그 관리 흐름을 `large-task-orchestrator`에 반영한다. | 사용자 요청 | 2026-06-13 | 2026-06-13 | `.codex/skills/large-task-orchestrator/SKILL.md`, `.codex/skills/large-task-orchestrator/workflows/`, `.codex/skills/large-task-orchestrator/checklist/`, `.codex/skills/large-task-orchestrator/references/` | `large-task-orchestrator`의 start/next/status/done/revise 흐름에 `backlog-management` 읽기, `BL-*` 연결, 라우팅 패턴, `Done` 결과 기록, 위키 작성 결과의 파일/섹션/변경 내용 기록 규칙을 반영함. |
+| BL-20260614-001 | Done | skill-agent | SCM Agent가 `large-task-orchestrator` 작업에서 전용 task worktree를 요청하도록 지침을 추가한다. | 사용자 요청 | 2026-06-14 | 2026-06-14 | `.codex/agents/scm.toml`, `.codex/skills/large-task-orchestrator/SKILL.md`, `.codex/skills/large-task-orchestrator/workflows/`, `.codex/skills/large-task-orchestrator/checklist/`, `.codex/skills/large-task-orchestrator/references/` | `scm.toml` `## Large Task Orchestrator Worktree Rules`에 task worktree 요청/생성/검증/기록 규칙을 추가하고, `large-task-orchestrator` start/next/status/schema/checklist에 `Task Worktree` 기록과 재사용 규칙을 반영함. |

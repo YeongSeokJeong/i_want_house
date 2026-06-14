@@ -10,6 +10,7 @@ Exit criteria for running `next` as the single lifecycle command.
 - [ ] `plan.md`, `progress.md`, `decision.md`, `architecture.md` are loaded before action.
 - [ ] Linked `BL-*` items are loaded from `docs/backlog.md` when present.
 - [ ] The recorded task branch is loaded and reused; no per-feature branch is created.
+- [ ] The recorded task worktree is verified or explicitly recorded as the current checkout; no per-feature worktree is created.
 
 ### Open Mode (start/resume execution)
 
@@ -17,6 +18,7 @@ Exit criteria for running `next` as the single lifecycle command.
 - [ ] Relevant task-level backlog item is set to `Doing` if it was `Todo`.
 - [ ] Session Briefing block printed in required format.
 - [ ] Session goal explicitly includes task name, feature ID, description, and acceptance criteria.
+- [ ] Session goal includes task branch and task worktree.
 - [ ] Relevant files listed with rationale.
 - [ ] Implementation started immediately after briefing on the recorded task branch.
 

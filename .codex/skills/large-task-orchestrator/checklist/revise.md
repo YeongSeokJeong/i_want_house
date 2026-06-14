@@ -11,7 +11,7 @@ Exit criteria for documentation-only continuity updates.
 - [ ] No code implementation is performed.
 - [ ] Revised feature IDs and dependency impacts are explicitly listed.
 - [ ] `plan.md` revision includes version bump + revision log when scope/structure changed.
-- [ ] `Task Branch` metadata is preserved and synchronized between `plan.md` and `progress.md`.
+- [ ] `Task Branch` and `Task Worktree` metadata are preserved and synchronized between `plan.md` and `progress.md`.
 - [ ] `BL-*` links and routes stay synchronized between orchestration docs and `docs/backlog.md`.
 - [ ] `progress.md` status/session impacts are synchronized with revised plan.
 - [ ] Backlog rows are updated only when route, status, blocker, or follow-up scope changed.

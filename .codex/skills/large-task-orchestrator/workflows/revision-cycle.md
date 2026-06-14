@@ -41,7 +41,7 @@ Read, in order:
 4. `./docs/orchestration/<task-name>/decision.md`
 5. `./docs/orchestration/<task-name>/architecture.md`
 6. `docs/backlog.md` if present, and linked `BL-*` IDs from the orchestration docs.
-7. Preserve the existing task branch metadata in `plan.md` and `progress.md`; revisions must not switch branch strategy silently.
+7. Preserve the existing task branch and task worktree metadata in `plan.md` and `progress.md`; revisions must not switch branch or worktree strategy silently.
 
 ### Stage 1: Brainstorming
 
@@ -87,7 +87,7 @@ Apply approved revisions to:
 3. `./docs/orchestration/<task-name>/decision.md`
 4. `docs/backlog.md` only when backlog links, routes, statuses, blockers, or deferred follow-ups changed
 
-Keep `Task Branch` synchronized between `plan.md` and `progress.md`.
+Keep `Task Branch` and `Task Worktree` synchronized between `plan.md` and `progress.md`.
 Keep `BL-*` links synchronized between `docs/backlog.md`, `plan.md`, and `progress.md`.
 
 Do not perform code implementation, code refactoring, or code commits in this workflow.

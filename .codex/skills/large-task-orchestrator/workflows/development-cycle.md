@@ -61,12 +61,12 @@ Read, in order:
 
 1. Resolve `<task-name>` and use `./docs/orchestration/<task-name>/`.
 2. `./docs/orchestration/<task-name>/plan.md` (feature IDs, current plan version, revision log)
-3. Read the recorded task branch from `plan.md` and/or `progress.md`.
+3. Read the recorded task branch and task worktree from `plan.md` and/or `progress.md`.
 4. `./docs/orchestration/<task-name>/progress.md` (find current and next pending feature IDs)
 5. `./docs/orchestration/<task-name>/decision.md` (prior decisions and constraints)
 6. `./docs/orchestration/<task-name>/architecture.md` (system and dependency context)
 7. `docs/backlog.md` if present, using `backlog-management` to find linked `BL-*` items from `plan.md`/`progress.md`.
-8. Verify the current work continues on that task branch; if docs are missing the branch, repair the docs before continuing implementation.
+8. Verify the current work continues on that task branch and, when recorded, in that task worktree. If docs are missing the branch or worktree, repair the docs before continuing implementation.
 
 ### Step A1: Open Mode (start/resume execution)
 
@@ -91,6 +91,7 @@ Output this exact block:
 ### 🎯 This Session Goal
 - Task: <task-name>
 - Branch: <task-branch>
+- Worktree: <task-worktree path, or "current checkout">
 - Feature ID: <feature-id>
 - Feature: <feature name>
 - Backlog: <BL-* id and route, or "None">
@@ -109,7 +110,7 @@ Output this exact block:
 
 Run this implementation sequence (same stage order as feature-implementation, but the task-branch policy here overrides feature-branch creation):
 
-1. [SCM Agent](../../../agents/scm.agent.md): check out the recorded task branch; create it only if the start workflow did not already do so
+1. [SCM Agent](../../../agents/scm.agent.md): verify or switch to the recorded task worktree and task branch; create them only if the start workflow did not already do so and the user approves
 2. [Backend Agent](../../../agents/backend.agent.md): implement feature + tests
 3. [QA Agent](../../../agents/qa.agent.md): mandatory QA gate
 4. If QA FAIL(CRITICAL/HIGH): iterate fix loop until pass or explicit stop
@@ -138,6 +139,7 @@ Do not proceed to another feature until test + QA pass and the feature commit is
 - Session: <N>
 - Task: <task-name>
 - Branch: <task-branch>
+- Worktree: <task-worktree path, or "current checkout">
 - Feature ID: <feature-id>
 - Feature: <feature name>
 - Commit: <commit hash>
@@ -174,6 +176,7 @@ Key files: <file list>"
 4. Output:
 
 - task branch
+- task worktree
 - linked backlog IDs, routes, and statuses
 - total features
 - completed count

@@ -32,6 +32,17 @@ Your mission is to handle Git operations safely — committing with Conventional
 - **ALWAYS** stage by explicit file paths.
 - Do not rewrite **shared** history without maintainer approval; prefer `--force-with-lease` if force-push is unavoidable.
 
+## Large Task Orchestrator Worktree Rules
+Use these rules when SCM Agent is invoked by `large-task-orchestrator`.
+
+1. At `/large-task-orchestrator start <task-name>`, ask for or propose a dedicated task worktree before feature implementation begins.
+2. If the user approves, create or prepare a worktree for the task branch with `git worktree add <path> <branch>` or an equivalent safe Git workflow.
+3. If the current checkout is already the intended task worktree, record that path instead of creating another worktree.
+4. Record both `Task Branch` and `Task Worktree` in orchestration continuity docs.
+5. At `/large-task-orchestrator next|resume <task-name>`, verify the recorded worktree path before implementation resumes.
+6. Do not create per-feature worktrees unless the user explicitly asks; feature separation remains by commits on the shared task branch.
+7. If worktree creation is blocked by local filesystem state, permissions, or an existing checkout, stop and report the exact blocker instead of silently continuing on an unrecorded workspace.
+
 ---
 
 ## Operating Modes
@@ -186,7 +197,7 @@ git commit -F /tmp/oma-commit-msg.txt
 ### 3) Control
 1. Small, reviewable units; align commits with PR / issue intent.
 2. **Conflicts**: `merge-base`, `git status`, resolve markers, tests; suggest `rerere` when conflicts repeat.
-3. **Worktrees**: `git worktree add`; merge/rebase from the **target branch's** checkout; all worktrees share one object database.
+3. **Worktrees**: `git worktree add`; merge/rebase from the **target branch's** checkout; all worktrees share one object database. For large-task-orchestrator work, request or prepare a dedicated task worktree and record it before implementation starts.
 4. Do not rewrite **shared** history without maintainer approval; prefer `--force-with-lease` if force-push is unavoidable.
 
 ### 4) Status Accounting
