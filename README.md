@@ -238,3 +238,21 @@ Get-Content .codex\prompts\loop-review.md -Raw | codex exec --sandbox read-only 
 - GitHub Pages가 원하는 branch/path를 서빙하는지
 - Telegram secrets가 정확하고 `--send` 실행 시 실제 메시지가 도착하는지
 - 외부 매물/실거래 데이터 소스 접근 정책과 응답이 유효한지
+## 네이버부동산 웹 수집 설정
+
+정기 실행에서 네이버부동산을 직접 수집하려면 GitHub repository variables에 다음 값을 넣습니다.
+
+```text
+JEONSELOOP_LISTING_SOURCE_KIND=naver
+JEONSELOOP_NAVER_COMPLEX_NO_MAP={"sample-apt":"111515"}
+JEONSELOOP_NAVER_TRADE_TYPE=B1
+JEONSELOOP_NAVER_REAL_ESTATE_TYPE=APT
+JEONSELOOP_NAVER_MAX_PAGES=3
+```
+
+- `JEONSELOOP_NAVER_COMPLEX_NO_MAP`은 watchlist의 `complex_id`를 네이버 단지번호로 연결하는 JSON 객체입니다.
+- `JEONSELOOP_NAVER_TRADE_TYPE=B1`은 전세 매물을 뜻합니다.
+- 네이버부동산 수집은 공개 응답에 대한 best-effort 방식입니다. HTTP 429, CAPTCHA, 로그인 요구, 구조 변경이 발생하면 우회하지 않고 실패로 기록합니다.
+- 실패 시 이전 정상 `data/listings`와 `data/history` 상태는 보존하고, `data/state/collector-diagnostics.json`에 진단 정보를 남깁니다.
+
+수집 실패 후 보고서를 만들려면 GitHub Actions의 `Collector Recovery` workflow를 수동 실행하고, 실패한 `JeonseLoop` run ID를 `run_id`에 입력합니다. 이 workflow는 `collector-diagnostics` artifact를 내려받아 `collector-recovery-report` artifact를 생성합니다. 이 보고서는 수정 후보를 검토하기 위한 자료이며 `main`에 자동 push하지 않습니다.

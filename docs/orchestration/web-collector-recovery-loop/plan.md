@@ -87,9 +87,9 @@
   - Document configuration, expected limits, failure modes, and recovery workflow usage.
   - Update wiki/domain notes if durable operation knowledge changes.
 - Acceptance Criteria:
-  - [ ] Korean operator docs explain required GitHub Secrets/Variables.
-  - [ ] Documentation states that Naver collection is best-effort and does not bypass access controls.
-  - [ ] Recovery-loop operation is documented with concrete runbook steps.
+  - [x] Korean operator docs explain required GitHub Secrets/Variables.
+  - [x] Documentation states that Naver collection is best-effort and does not bypass access controls.
+  - [x] Recovery-loop operation is documented with concrete runbook steps.
 - Out of Scope:
   - Legal advice or guarantee of Naver availability.
 
