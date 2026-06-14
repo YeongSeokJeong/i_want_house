@@ -5,8 +5,8 @@ JeonseLoop is a personal unattended real-estate monitoring loop that collects wa
 It persists JSON/Markdown state for a GitHub Pages dashboard while practicing the Loop Engineering cycle: Trigger, Discover/Route, Execute, Verify, Persist, and Escalate.
 
 ## Quick Start Commands
-- Run the product loop without sends or writes:
-  `powershell -File scripts/run-loop.ps1 -DryRun`
+- Run the fixture-backed product loop without sends or writes:
+  `powershell -File scripts/run-loop.ps1 -DryRun -Fixture tests\fixtures\listings.json`
 - Run the fixture-backed verification tests:
   `python -m unittest discover -s tests`
 - Run the development inspection prompt:

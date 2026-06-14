@@ -40,6 +40,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('if [ "${{ inputs.send }}" = "true" ]; then', text)
         self.assertIn('args="$args --send"', text)
 
+    def test_workflow_passes_live_source_configuration(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("JEONSELOOP_LISTING_SOURCE_URL: ${{ secrets.JEONSELOOP_LISTING_SOURCE_URL }}", text)
+        self.assertIn("JEONSELOOP_TRADE_SOURCE_URL: ${{ secrets.JEONSELOOP_TRADE_SOURCE_URL }}", text)
+        self.assertIn("JEONSELOOP_SOURCE_BEARER_TOKEN: ${{ secrets.JEONSELOOP_SOURCE_BEARER_TOKEN }}", text)
+
 
 if __name__ == "__main__":
     unittest.main()

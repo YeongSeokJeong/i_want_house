@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -13,9 +14,10 @@ from jeonseloop.analyzer import (
     classify_candidates,
     detect_average_price_jumps,
 )
-from jeonseloop.collector import TransientListingFetchError, collect_listings
+from jeonseloop.collector import ListingSourceNotConfiguredError, TransientListingFetchError, collect_listings
 from jeonseloop.loop import LoopOptions, run_cycle
 from jeonseloop.persistence import write_failure_health
+from jeonseloop.sources import HttpJsonSourceClient, HttpJsonSourceConfig, TransientSourceFetchError
 from jeonseloop.trades import load_trade_baselines
 from jeonseloop.watchlist import WatchTarget
 
@@ -30,6 +32,10 @@ TARGET = WatchTarget(
 
 
 class ReliabilityTests(unittest.TestCase):
+    def test_live_collection_requires_fixture_or_configured_source(self) -> None:
+        with self.assertRaises(ListingSourceNotConfiguredError):
+            collect_listings((TARGET,))
+
     def test_live_fetcher_retries_transient_failures_and_paces_requests(self) -> None:
         targets = (
             TARGET,
@@ -68,6 +74,88 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(calls, ["sample-apt", "sample-apt", "sample-apt", "other-apt"])
         self.assertEqual(sleeps, [2, 2, 2])
         self.assertEqual(len(result["sample-apt"]), 1)
+
+    def test_live_fetcher_retries_transient_source_failures(self) -> None:
+        attempts = 0
+        sleeps: list[float] = []
+
+        def fetcher(target: WatchTarget) -> list[dict]:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise TransientSourceFetchError("temporary source failure")
+            return [
+                {
+                    "listing_id": "source-retry",
+                    "complex_id": target.complex_id,
+                    "price_krw": 830000000,
+                    "area_m2": 84.9,
+                    "floor": 9,
+                    "link": "https://example.invalid/source-retry",
+                }
+            ]
+
+        result = collect_listings((TARGET,), fetcher=fetcher, sleeper=sleeps.append)
+
+        self.assertEqual(attempts, 2)
+        self.assertEqual(sleeps, [2])
+        self.assertEqual(result["sample-apt"][0]["listing_id"], "source-retry")
+
+    def test_http_json_listing_source_filters_to_watchlist_complex(self) -> None:
+        requests: list[str] = []
+
+        def opener(req, timeout: int) -> object:
+            requests.append(req.full_url)
+            return _JsonResponse(
+                {
+                    "listings": [
+                        {
+                            "listing_id": "live-1",
+                            "price_krw": 830000000,
+                            "area_m2": 84.9,
+                            "floor": 9,
+                            "link": "https://example.invalid/live-1",
+                        },
+                        {
+                            "listing_id": "wrong-complex",
+                            "complex_id": "other-apt",
+                            "price_krw": 830000000,
+                            "area_m2": 84.9,
+                            "floor": 9,
+                            "link": "https://example.invalid/wrong",
+                        },
+                    ]
+                }
+            )
+
+        client = HttpJsonSourceClient(
+            HttpJsonSourceConfig(listing_url="https://source.example/listings/{complex_id}"),
+            opener=opener,
+        )
+
+        records = client.fetch_listings(TARGET)
+
+        self.assertEqual(requests, ["https://source.example/listings/sample-apt"])
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["complex_id"], "sample-apt")
+        self.assertEqual(records[0]["listing_id"], "live-1")
+
+    def test_http_json_trade_source_can_feed_baseline_repository(self) -> None:
+        def opener(req, timeout: int) -> object:
+            self.assertEqual(req.full_url, "https://source.example/trades/sample-apt")
+            return _JsonResponse({"trades": [{"trade_price_krw": 930000000}, {"price_krw": 920000000}]})
+
+        client = HttpJsonSourceClient(
+            HttpJsonSourceConfig(trade_url="https://source.example/trades/{complex_id}"),
+            opener=opener,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            from jeonseloop.trades import TradeBaselineRepository
+
+            baselines = TradeBaselineRepository(Path(temp_dir), fetcher=client.fetch_trades).load((TARGET,))
+
+        self.assertEqual(baselines, {"sample-apt": 925000000})
 
     def test_trade_baseline_and_target_price_fallback_are_both_supported(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -122,6 +210,29 @@ class ReliabilityTests(unittest.TestCase):
         )
         self.assertEqual(fallback_candidates[0].decision, "approve")
         self.assertEqual(fallback_candidates[0].reason, "target_price")
+
+    def test_cycle_records_missing_live_source_as_failed_health(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            with patch.dict("os.environ", {}, clear=True):
+                result = run_cycle(
+                    LoopOptions(
+                        watchlist_path=ROOT / "config" / "watchlist.yaml",
+                        data_dir=root / "data",
+                        logs_dir=root / "logs",
+                        dry_run=False,
+                        allow_send=False,
+                    )
+                )
+
+            health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["reason"], "listing_source_unconfigured")
+        self.assertIn("JEONSELOOP_LISTING_SOURCE_URL", result["error"])
+        self.assertEqual(health["latest"]["reason"], "listing_source_unconfigured")
+        self.assertFalse((root / "data" / "listings" / "sample-apt.json").exists())
 
     def test_health_tracks_failure_streak_and_last_success(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -261,6 +372,22 @@ class ReliabilityTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "success")
         self.assertEqual(history["history"][-1]["recent_trade_price_krw"], 925000000)
+
+
+class _JsonResponse:
+    status = 200
+
+    def __init__(self, payload: object) -> None:
+        self._payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self._payload).encode("utf-8")
 
 
 if __name__ == "__main__":
