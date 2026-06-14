@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Any
 
 CRITERIA_SUGGESTION_THRESHOLD = 30
+FALSE_POSITIVE_REASON_PREFIXES = (
+    "llm_",
+    "average_price_jump",
+    "duplicate_listing",
+)
 
 
 class CriteriaSuggestionService:
@@ -27,18 +32,13 @@ class CriteriaSuggestionService:
             return None
 
         reason_counts = Counter(row["reason"] for row in rows if row.get("reason"))
-        suggestions = [
-            {
-                "reason": reason,
-                "decision_count": count,
-                "proposal": f"Review watchlist thresholds or exclusion rules related to `{reason}`.",
-                "requires_human_approval": True,
-            }
-            for reason, count in reason_counts.most_common(5)
-        ]
+        false_positive_rows = [row for row in rows if _is_false_positive_signal(row)]
+        false_positive_reason_counts = Counter(row["reason"] for row in false_positive_rows if row.get("reason"))
+        suggestions = _suggestions(reason_counts, false_positive_reason_counts)
         payload = {
             "generated_at": generated_at,
             "decision_count": len(rows),
+            "metrics": _metrics(rows, reason_counts, false_positive_rows, false_positive_reason_counts),
             "status": "review_required",
             "suggestions": suggestions,
             "auto_applied": False,
@@ -59,6 +59,67 @@ def write_criteria_suggestions(
         data_dir=data_dir,
         min_decisions=min_decisions,
     ).write(generated_at=generated_at)
+
+
+def _metrics(
+    rows: list[dict[str, str]],
+    reason_counts: Counter[str],
+    false_positive_rows: list[dict[str, str]],
+    false_positive_reason_counts: Counter[str],
+) -> dict[str, Any]:
+    approved_count = sum(1 for row in rows if row.get("decision") == "approve")
+    false_positive_count = len(false_positive_rows)
+    reviewed_count = approved_count + false_positive_count
+    false_positive_ratio = false_positive_count / reviewed_count if reviewed_count else 0.0
+    return {
+        "total_decisions": len(rows),
+        "approved_decisions": approved_count,
+        "false_positive_signals": false_positive_count,
+        "reviewed_decisions": reviewed_count,
+        "false_positive_ratio": round(false_positive_ratio, 4),
+        "reason_counts": dict(reason_counts.most_common()),
+        "false_positive_reason_counts": dict(false_positive_reason_counts.most_common()),
+    }
+
+
+def _suggestions(
+    reason_counts: Counter[str],
+    false_positive_reason_counts: Counter[str],
+) -> list[dict[str, Any]]:
+    proposals: list[dict[str, Any]] = []
+    for reason, count in false_positive_reason_counts.most_common(5):
+        proposals.append(
+            {
+                "reason": reason,
+                "decision_count": count,
+                "signal": "false_positive",
+                "proposal": f"Review candidate review or data-quality rules related to `{reason}`.",
+                "requires_human_approval": True,
+            }
+        )
+
+    for reason, count in reason_counts.most_common(5):
+        if reason in false_positive_reason_counts:
+            continue
+        proposals.append(
+            {
+                "reason": reason,
+                "decision_count": count,
+                "signal": "criteria_frequency",
+                "proposal": f"Review watchlist thresholds or exclusion rules related to `{reason}`.",
+                "requires_human_approval": True,
+            }
+        )
+        if len(proposals) >= 5:
+            break
+    return proposals
+
+
+def _is_false_positive_signal(row: dict[str, str]) -> bool:
+    if row.get("decision") == "approve":
+        return False
+    reason = row.get("reason", "")
+    return reason.startswith(FALSE_POSITIVE_REASON_PREFIXES)
 
 
 def _criteria_rows(path: Path) -> list[dict[str, str]]:
