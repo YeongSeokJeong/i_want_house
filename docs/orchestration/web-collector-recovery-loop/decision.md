@@ -9,6 +9,7 @@
 |---------|------------|---------|----------|-----------|--------|------|
 | 1 | PLAN | Planning | Use reviewable recovery, not direct self-modifying main pushes | Web-source failures can be caused by site controls or contract changes and need human review before production changes | Recovery loop will produce diagnostics/reports/PR candidates, not unreviewed deploys | 2026-06-14 |
 | 1 | PLAN | Planning | Preserve existing HTTP JSON source mode | Existing Actions and tests rely on this contract and it remains useful for fixtures or future official APIs | Naver source is additive | 2026-06-14 |
+| 1 | F-001 | Collector source contract | Select Naver through `JEONSELOOP_LISTING_SOURCE_KIND=naver` and map watchlist IDs with `JEONSELOOP_NAVER_COMPLEX_NO_MAP` | The existing watchlist ID may be a stable local ID rather than Naver's numeric complex number | Supports both local stable IDs and numeric Naver IDs without hard-coding operator data | 2026-06-14 |
 
 ## Session 1
 - Feature ID: PLAN

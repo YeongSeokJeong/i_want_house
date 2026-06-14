@@ -39,6 +39,21 @@ class HttpJsonSourceConfig:
         )
 
 
+@dataclass(frozen=True)
+class NaverSourceConfig:
+    complex_no_by_id: dict[str, str]
+    timeout_seconds: int = 15
+
+    @classmethod
+    def from_env(cls, values: Mapping[str, str] | None = None) -> NaverSourceConfig:
+        env = os.environ if values is None else values
+        timeout = _positive_int(env.get("JEONSELOOP_SOURCE_TIMEOUT_SECONDS"), default=15)
+        return cls(
+            complex_no_by_id=_parse_complex_no_map(env.get("JEONSELOOP_NAVER_COMPLEX_NO_MAP")),
+            timeout_seconds=timeout,
+        )
+
+
 class HttpJsonSourceClient:
     def __init__(
         self,
@@ -98,12 +113,45 @@ class HttpJsonSourceClient:
             raise SourceFetchError("source response is not valid UTF-8 JSON") from exc
 
 
+class NaverListingSourceClient:
+    def __init__(
+        self,
+        config: NaverSourceConfig,
+        *,
+        opener: Opener | None = None,
+    ) -> None:
+        self._config = config
+        self._opener = opener if opener is not None else request.urlopen
+
+    def fetch_listings(self, target: WatchTarget) -> list[dict[str, Any]]:
+        self._complex_no_for(target)
+        raise SourceFetchError("naver listing adapter is configured but not implemented yet")
+
+    def _complex_no_for(self, target: WatchTarget) -> str:
+        mapped = self._config.complex_no_by_id.get(target.complex_id)
+        if mapped:
+            return mapped
+        if str(target.complex_id).isdigit():
+            return str(target.complex_id)
+        raise SourceFetchError(
+            "naver source requires JEONSELOOP_NAVER_COMPLEX_NO_MAP entry "
+            f"for complex_id '{target.complex_id}' or a numeric watchlist complex_id"
+        )
+
+
 def listing_fetcher_from_env(
     values: Mapping[str, str] | None = None,
 ) -> Callable[[WatchTarget], list[dict[str, Any]]] | None:
-    config = HttpJsonSourceConfig.from_env(values)
-    if not config.listing_url:
+    env = os.environ if values is None else values
+    kind = _listing_source_kind(env)
+    if kind is None:
         return None
+    if kind == "naver":
+        return NaverListingSourceClient(NaverSourceConfig.from_env(values)).fetch_listings
+    if kind != "http-json":
+        return _invalid_listing_source_kind(kind)
+
+    config = HttpJsonSourceConfig.from_env(values)
     return HttpJsonSourceClient(config).fetch_listings
 
 
@@ -135,6 +183,43 @@ def _target_url(template: str, target: WatchTarget) -> str:
     for token, value in replacements.items():
         url = url.replace(token, value)
     return url
+
+
+def _listing_source_kind(env: Mapping[str, str]) -> str | None:
+    raw_kind = _blank_to_none(env.get("JEONSELOOP_LISTING_SOURCE_KIND"))
+    if raw_kind is None:
+        return "http-json" if _blank_to_none(env.get("JEONSELOOP_LISTING_SOURCE_URL")) else None
+    normalized = raw_kind.strip().lower().replace("_", "-")
+    if normalized in {"http", "json", "http-json"}:
+        return "http-json"
+    return normalized
+
+
+def _invalid_listing_source_kind(kind: str) -> Callable[[WatchTarget], list[dict[str, Any]]]:
+    def fetcher(target: WatchTarget) -> list[dict[str, Any]]:
+        raise SourceFetchError(f"unsupported JEONSELOOP_LISTING_SOURCE_KIND '{kind}'")
+
+    return fetcher
+
+
+def _parse_complex_no_map(value: str | None) -> dict[str, str]:
+    stripped = _blank_to_none(value)
+    if stripped is None:
+        return {}
+    try:
+        raw = json.loads(stripped)
+    except json.JSONDecodeError as exc:
+        raise SourceFetchError("JEONSELOOP_NAVER_COMPLEX_NO_MAP must be a JSON object") from exc
+    if not isinstance(raw, dict):
+        raise SourceFetchError("JEONSELOOP_NAVER_COMPLEX_NO_MAP must be a JSON object")
+    parsed: dict[str, str] = {}
+    for key, raw_value in raw.items():
+        complex_id = str(key).strip()
+        complex_no = str(raw_value).strip()
+        if not complex_id or not complex_no:
+            raise SourceFetchError("JEONSELOOP_NAVER_COMPLEX_NO_MAP entries must be non-empty")
+        parsed[complex_id] = complex_no
+    return parsed
 
 
 def _blank_to_none(value: str | None) -> str | None:

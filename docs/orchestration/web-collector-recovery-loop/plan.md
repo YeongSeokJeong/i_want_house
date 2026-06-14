@@ -36,10 +36,10 @@
   - Define Naver configuration inputs needed by the adapter.
   - Add tests proving existing HTTP JSON mode still works.
 - Acceptance Criteria:
-  - [ ] Existing `JEONSELOOP_LISTING_SOURCE_URL` HTTP JSON mode remains supported.
-  - [ ] Naver source mode can be selected through environment/configuration without hard-coded operator values.
-  - [ ] Missing Naver configuration produces a clear health failure reason.
-  - [ ] `.env.example` contains placeholders only.
+  - [x] Existing `JEONSELOOP_LISTING_SOURCE_URL` HTTP JSON mode remains supported.
+  - [x] Naver source mode can be selected through environment/configuration without hard-coded operator values.
+  - [x] Missing Naver configuration produces a clear health failure reason.
+  - [x] `.env.example` contains placeholders only.
 - Out of Scope:
   - Real Naver payload parsing beyond the minimal contract.
 

@@ -88,8 +88,8 @@ class LoopCoordinator:
                 )
             return run_record
 
-        collector = self._collector_for_watchlist(watchlist)
         try:
+            collector = self._collector_for_watchlist(watchlist)
             raw_records = collector.collect(watchlist.complexes, self._options.fixture_path)
         except ListingSourceNotConfiguredError as exc:
             return self._record_runtime_failure(

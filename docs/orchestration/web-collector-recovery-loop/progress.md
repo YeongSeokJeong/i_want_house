@@ -18,7 +18,7 @@
 ## Feature Implementation Status
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
 |------------|--------------|--------|--------------|--------|---------|
-| F-001 | Collector source contract | TODO | 1 | - | 2026-06-14 |
+| F-001 | Collector source contract | DONE | 1 | - | 2026-06-14 |
 | F-002 | Naver listing adapter | TODO | 1 | - | 2026-06-14 |
 | F-003 | Failure diagnostics | TODO | 1 | - | 2026-06-14 |
 | F-004 | Actions recovery workflow | TODO | 1 | - | 2026-06-14 |
@@ -28,11 +28,12 @@
 | Session | Feature ID | Feature | Status | Commit | Date |
 |---------|------------|---------|--------|--------|------|
 | 1 | PLAN | Planning | Done | - | 2026-06-14 |
+| 1 | F-001 | Collector source contract | Done | - | 2026-06-14 |
 
 ## Next Session Instructions
-- Next Feature ID: F-001
-- Next Feature: Collector source contract
-- Description: Add source selection/configuration contract for existing HTTP JSON and new Naver source mode while preserving current behavior.
-- Key Files: `src/jeonseloop/sources.py`, `src/jeonseloop/loop.py`, `tests/test_reliability.py`, `.env.example`
+- Next Feature ID: F-002
+- Next Feature: Naver listing adapter
+- Description: Implement fixture-backed Naver listing fetch/normalization using the source mode contract from F-001.
+- Key Files: `src/jeonseloop/sources.py`, `tests/test_reliability.py`, `tests/fixtures/`
 - Dependencies Ready: yes
 - Known Issues: Naver endpoint shape is unstable and must be treated as best-effort.

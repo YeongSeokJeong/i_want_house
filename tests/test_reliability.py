@@ -17,7 +17,13 @@ from jeonseloop.analyzer import (
 from jeonseloop.collector import ListingSourceNotConfiguredError, TransientListingFetchError, collect_listings
 from jeonseloop.loop import LoopOptions, run_cycle
 from jeonseloop.persistence import write_failure_health
-from jeonseloop.sources import HttpJsonSourceClient, HttpJsonSourceConfig, TransientSourceFetchError
+from jeonseloop.sources import (
+    HttpJsonSourceClient,
+    HttpJsonSourceConfig,
+    SourceFetchError,
+    TransientSourceFetchError,
+    listing_fetcher_from_env,
+)
 from jeonseloop.trades import load_trade_baselines
 from jeonseloop.watchlist import WatchTarget
 
@@ -140,6 +146,36 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(records[0]["complex_id"], "sample-apt")
         self.assertEqual(records[0]["listing_id"], "live-1")
 
+    def test_listing_source_kind_defaults_to_http_json_when_url_is_present(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_URL": "https://source.example/listings"})
+
+        self.assertIsNotNone(fetcher)
+
+    def test_naver_source_kind_requires_complex_number_mapping_for_named_targets(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "naver"})
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_NAVER_COMPLEX_NO_MAP"):
+            assert fetcher is not None
+            fetcher(TARGET)
+
+    def test_naver_source_kind_accepts_numeric_watchlist_complex_id(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "naver"})
+        numeric_target = WatchTarget("111515", "Numeric Complex", 84.9, 850000000)
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "not implemented yet"):
+            assert fetcher is not None
+            fetcher(numeric_target)
+
+    def test_invalid_listing_source_kind_is_reported_as_source_error(self) -> None:
+        fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "unknown"})
+
+        self.assertIsNotNone(fetcher)
+        with self.assertRaisesRegex(SourceFetchError, "unsupported JEONSELOOP_LISTING_SOURCE_KIND"):
+            assert fetcher is not None
+            fetcher(TARGET)
+
     def test_http_json_trade_source_can_feed_baseline_repository(self) -> None:
         def opener(req, timeout: int) -> object:
             self.assertEqual(req.full_url, "https://source.example/trades/sample-apt")
@@ -233,6 +269,28 @@ class ReliabilityTests(unittest.TestCase):
         self.assertIn("JEONSELOOP_LISTING_SOURCE_URL", result["error"])
         self.assertEqual(health["latest"]["reason"], "listing_source_unconfigured")
         self.assertFalse((root / "data" / "listings" / "sample-apt.json").exists())
+
+    def test_cycle_records_missing_naver_complex_mapping_as_collector_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            with patch.dict("os.environ", {"JEONSELOOP_LISTING_SOURCE_KIND": "naver"}, clear=True):
+                result = run_cycle(
+                    LoopOptions(
+                        watchlist_path=ROOT / "config" / "watchlist.yaml",
+                        data_dir=root / "data",
+                        logs_dir=root / "logs",
+                        dry_run=False,
+                        allow_send=False,
+                    )
+                )
+
+            health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["reason"], "collector_failed")
+        self.assertIn("JEONSELOOP_NAVER_COMPLEX_NO_MAP", result["error"])
+        self.assertEqual(health["latest"]["reason"], "collector_failed")
 
     def test_health_tracks_failure_streak_and_last_success(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
