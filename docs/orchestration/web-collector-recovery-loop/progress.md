@@ -33,6 +33,7 @@
 | 1 | F-003 | Failure diagnostics | Done | - | 2026-06-14 |
 | 1 | F-004 | Actions recovery workflow | Done | - | 2026-06-14 |
 | 1 | F-005 | Operator documentation | Done | - | 2026-06-14 |
+| 2 | F-004 | Actions recovery workflow | Done | - | 2026-06-14 |
 
 ## Next Session Instructions
 - Next Feature ID: DONE
@@ -40,4 +41,4 @@
 - Description: Run final verification, write handoff, and close linked backlog item.
 - Key Files: `docs/handoff/web-collector-recovery-loop-final.md`, `docs/backlog.md`
 - Dependencies Ready: yes
-- Known Issues: Live Naver request from the local environment returned HTTP 429, so runtime success depends on GitHub runner/network and Naver availability.
+- Known Issues: Naver source settings were initially entered as GitHub Secrets, so the workflow now reads Variables first and Secrets as fallback.

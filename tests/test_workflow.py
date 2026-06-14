@@ -52,8 +52,14 @@ class WorkflowTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("JEONSELOOP_LISTING_SOURCE_URL: ${{ secrets.JEONSELOOP_LISTING_SOURCE_URL }}", text)
-        self.assertIn("JEONSELOOP_LISTING_SOURCE_KIND: ${{ vars.JEONSELOOP_LISTING_SOURCE_KIND || '' }}", text)
-        self.assertIn("JEONSELOOP_NAVER_COMPLEX_NO_MAP: ${{ vars.JEONSELOOP_NAVER_COMPLEX_NO_MAP || '' }}", text)
+        self.assertIn(
+            "JEONSELOOP_LISTING_SOURCE_KIND: ${{ vars.JEONSELOOP_LISTING_SOURCE_KIND || secrets.JEONSELOOP_LISTING_SOURCE_KIND || '' }}",
+            text,
+        )
+        self.assertIn(
+            "JEONSELOOP_NAVER_COMPLEX_NO_MAP: ${{ vars.JEONSELOOP_NAVER_COMPLEX_NO_MAP || secrets.JEONSELOOP_NAVER_COMPLEX_NO_MAP || '' }}",
+            text,
+        )
         self.assertIn("JEONSELOOP_NAVER_TRADE_TYPE: ${{ vars.JEONSELOOP_NAVER_TRADE_TYPE || 'B1' }}", text)
         self.assertIn("JEONSELOOP_NAVER_REAL_ESTATE_TYPE: ${{ vars.JEONSELOOP_NAVER_REAL_ESTATE_TYPE || 'APT' }}", text)
         self.assertIn("JEONSELOOP_NAVER_MAX_PAGES: ${{ vars.JEONSELOOP_NAVER_MAX_PAGES || '3' }}", text)

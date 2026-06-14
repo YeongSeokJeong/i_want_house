@@ -14,6 +14,7 @@
 | 1 | F-003 | Failure diagnostics | Store sanitized collector diagnostics in `data/state/collector-diagnostics.json` | Recovery automation needs stable evidence independent of GitHub log retention | Failed runs can upload or inspect diagnostics without replacing previous listing snapshots | 2026-06-14 |
 | 1 | F-004 | Actions recovery workflow | Add a manual recovery-report workflow instead of auto-pushing fixes | Reviewable repair evidence is safer than direct self-modification | Failed loop runs can upload diagnostics, and operators can generate a recovery report by run ID | 2026-06-14 |
 | 1 | F-005 | Operator documentation | Document Naver setup and recovery limits in README and JeonseLoop wiki overview | Operators need exact variables and a clear statement that access controls are not bypassed | Configuration and recovery flow are discoverable from both operator docs and durable wiki | 2026-06-14 |
+| 2 | F-004 | Actions recovery workflow | Read Naver source kind and complex map from Variables first, then Secrets | Operator entered these values as Secrets and Actions runner received empty values when only Variables were referenced | Workflow supports both placement choices without exposing secret values | 2026-06-14 |
 
 ## Session 1
 - Feature ID: PLAN
