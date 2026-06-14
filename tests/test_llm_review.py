@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from jeonseloop.analyzer import Candidate, approved_candidates
-from jeonseloop.review import LlmReviewConfig, apply_llm_review, parse_review_response
+from jeonseloop.review import LlmReviewConfig, OpenAiCandidateReviewer, apply_llm_review, parse_review_response
 from jeonseloop.suggestions import write_criteria_suggestions
 
 
@@ -21,6 +21,20 @@ def candidate() -> Candidate:
         reason="target_price",
         listing={"title": "Sample", "link": "https://example.invalid/listing-1"},
     )
+
+
+class FakeResponse:
+    def __init__(self, payload: dict) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> "FakeResponse":
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return json.dumps(self._payload).encode("utf-8")
 
 
 class LlmReviewTests(unittest.TestCase):
@@ -51,6 +65,55 @@ class LlmReviewTests(unittest.TestCase):
         parsed = parse_review_response(json.dumps({"decision": "hold", "reason": "needs_human_check"}))
 
         self.assertEqual(parsed, {"decision": "hold", "reason": "needs_human_check"})
+
+    def test_openai_reviewer_posts_responses_api_payload(self) -> None:
+        seen: dict[str, object] = {}
+
+        def opener(req, timeout: int):
+            seen["url"] = req.full_url
+            seen["timeout"] = timeout
+            seen["headers"] = dict(req.header_items())
+            seen["payload"] = json.loads(req.data.decode("utf-8"))
+            return FakeResponse(
+                {
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [
+                                {
+                                    "type": "output_text",
+                                    "text": json.dumps({"decision": "hold", "reason": "verify_price"}),
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+        config = LlmReviewConfig(enabled=True, api_key="openai-secret", model="gpt-4.1")
+        response_text = OpenAiCandidateReviewer(config, opener=opener).review(candidate())
+
+        self.assertEqual(json.loads(response_text), {"decision": "hold", "reason": "verify_price"})
+        self.assertEqual(seen["url"], "https://api.openai.com/v1/responses")
+        self.assertEqual(seen["timeout"], 30)
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer openai-secret")
+        payload = seen["payload"]
+        self.assertEqual(payload["model"], "gpt-4.1")
+        self.assertEqual(payload["text"]["format"]["type"], "json_schema")
+        self.assertEqual(payload["text"]["format"]["name"], "jeonseloop_candidate_review")
+        self.assertTrue(payload["text"]["format"]["strict"])
+        self.assertEqual(payload["input"][0]["content"][0]["type"], "input_text")
+        self.assertIn("sample-apt", payload["input"][0]["content"][0]["text"])
+
+    def test_openai_output_text_shortcut_is_supported(self) -> None:
+        def opener(_req, timeout: int):
+            return FakeResponse({"output_text": json.dumps({"decision": "approve", "reason": "ok"})})
+
+        config = LlmReviewConfig(enabled=True, api_key="openai-secret")
+
+        response_text = OpenAiCandidateReviewer(config, opener=opener).review(candidate())
+
+        self.assertEqual(json.loads(response_text), {"decision": "approve", "reason": "ok"})
 
     def test_criteria_suggestions_do_not_modify_watchlist(self) -> None:
         watchlist_path = ROOT / "config" / "watchlist.yaml"

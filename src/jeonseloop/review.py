@@ -17,19 +17,18 @@ class ReviewError(ValueError):
 class LlmReviewConfig:
     enabled: bool = False
     api_key: str = ""
-    model: str = "claude-3-5-haiku-latest"
-    endpoint: str = "https://api.anthropic.com/v1/messages"
+    model: str = "gpt-4.1"
+    endpoint: str = "https://api.openai.com/v1/responses"
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "LlmReviewConfig":
         values = env if env is not None else os.environ
         requested = values.get("JEONSELOOP_LLM_REVIEW", "").strip().lower() in {"1", "true", "yes", "on"}
-        api_key = values.get("ANTHROPIC_API_KEY", "").strip()
+        api_key = values.get("OPENAI_API_KEY", "").strip()
         return cls(
             enabled=requested and bool(api_key),
             api_key=api_key,
-            model=values.get("JEONSELOOP_LLM_MODEL", "claude-3-5-haiku-latest").strip()
-            or "claude-3-5-haiku-latest",
+            model=values.get("JEONSELOOP_LLM_MODEL", "gpt-4.1").strip() or "gpt-4.1",
         )
 
 
@@ -51,7 +50,7 @@ class CandidateReviewService:
         if not self._config.enabled:
             return candidate_list
 
-        review = self._reviewer if self._reviewer is not None else AnthropicCandidateReviewer(self._config).review
+        review = self._reviewer if self._reviewer is not None else OpenAiCandidateReviewer(self._config).review
         reviewed: list[Candidate] = []
         for candidate in candidate_list:
             if candidate.decision != "approve":
@@ -104,53 +103,90 @@ def parse_review_response(text: str) -> dict[str, str]:
     return {"decision": decision, "reason": reason}
 
 
-class AnthropicCandidateReviewer:
-    def __init__(self, config: LlmReviewConfig) -> None:
+class OpenAiCandidateReviewer:
+    def __init__(self, config: LlmReviewConfig, opener: Callable[..., object] = request.urlopen) -> None:
         self._config = config
+        self._opener = opener
 
     def review(self, candidate: Candidate) -> str:  # pragma: no cover - live network path
-        body = json.dumps(
-            {
-                "model": self._config.model,
-                "max_tokens": 256,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": (
-                            "Review this JeonseLoop candidate. Respond only as JSON with "
-                            'decision "approve", "hold", or "reject" and a short reason.\n'
-                            + json.dumps(
-                                {
-                                    "complex_id": candidate.complex_id,
-                                    "price_krw": candidate.price_krw,
-                                    "reason": candidate.reason,
-                                    "listing": candidate.listing,
-                                },
-                                ensure_ascii=False,
-                                sort_keys=True,
-                            )
-                        ),
-                    }
-                ],
-            },
-            ensure_ascii=False,
-        ).encode("utf-8")
+        body = json.dumps(self._build_payload(candidate), ensure_ascii=False).encode("utf-8")
         req = request.Request(
             self._config.endpoint,
             data=body,
             method="POST",
             headers={
-                "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
-                "x-api-key": self._config.api_key,
+                "authorization": f"Bearer {self._config.api_key}",
             },
         )
-        with request.urlopen(req, timeout=30) as response:
+        with self._opener(req, timeout=30) as response:
             payload = json.loads(response.read().decode("utf-8"))
-        content = payload.get("content", [])
-        if not content or not isinstance(content[0], dict):
-            raise ReviewError("missing review content")
-        return str(content[0].get("text", ""))
+        return _extract_response_text(payload)
+
+    def _build_payload(self, candidate: Candidate) -> dict:
+        candidate_payload = {
+            "complex_id": candidate.complex_id,
+            "listing_key": candidate.listing_key,
+            "price_krw": candidate.price_krw,
+            "reason": candidate.reason,
+            "listing": candidate.listing,
+        }
+        return {
+            "model": self._config.model,
+            "instructions": (
+                "Review this JeonseLoop rental candidate before Telegram notification. "
+                "Approve only when the candidate is plausibly actionable. "
+                "Return JSON that matches the requested schema."
+            ),
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": json.dumps(candidate_payload, ensure_ascii=False, sort_keys=True),
+                        }
+                    ],
+                }
+            ],
+            "max_output_tokens": 256,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": "jeonseloop_candidate_review",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "decision": {"type": "string", "enum": ["approve", "hold", "reject"]},
+                            "reason": {"type": "string"},
+                        },
+                        "required": ["decision", "reason"],
+                        "additionalProperties": False,
+                    },
+                    "strict": True,
+                }
+            },
+        }
+
+
+def _extract_response_text(payload: dict) -> str:
+    output_text = payload.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        return output_text
+
+    output = payload.get("output", [])
+    if not isinstance(output, list):
+        raise ReviewError("missing review output")
+    for item in output:
+        if not isinstance(item, dict):
+            continue
+        content = item.get("content", [])
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and isinstance(part.get("text"), str) and part["text"].strip():
+                return part["text"]
+    raise ReviewError("missing review output text")
 
 
 def _replace_decision(candidate: Candidate, decision: str, reason: str) -> Candidate:

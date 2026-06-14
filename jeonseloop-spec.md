@@ -277,7 +277,7 @@ JeonseLoop는 관심 아파트 단지의 매물 호가와 실거래가를 정기
 - IF LLM 응답이 JSON으로 파싱되지 않으면 THE SYSTEM SHALL 해당 후보를 보류 처리하고 급매 알림에서 제외한다. [제안]
 - IF 후보가 승인되지 않으면 THE SYSTEM SHALL Telegram 급매 알림을 보내지 않고 판정 사유를 기록한다.
 
-**입력/데이터**: Anthropic API 키, 후보 매물 요약.
+**입력/데이터**: OpenAI API 키, 후보 매물 요약.
 
 **예외/실패 모드**: LLM API 실패는 후보 보류와 로그 기록으로 처리한다. [제안]
 
@@ -568,7 +568,7 @@ JeonseLoop는 관심 아파트 단지의 매물 호가와 실거래가를 정기
 |---|---|---|---|
 | 국토교통부 실거래가 API | IN | 단지·기간별 매매 실거래 조회 | FR-DC-03 |
 | 부동산 포털 매물 | IN | 워치리스트 단지 매물 호가 | FR-DC-02, FR-DC-04 |
-| Anthropic API | IN/OUT | 급매 후보 2차 검수 JSON 응답 | FR-VF-02 |
+| OpenAI Responses API | IN/OUT | 급매 후보 2차 검수 JSON 응답 | FR-VF-02 |
 | Telegram Bot API | OUT | `sendMessage` 급매 알림, 헬스 알림 | FR-ES-01, FR-ES-02 |
 | GitHub Pages | OUT | 정적 대시보드 배포 | FR-UI-01~04 |
 
@@ -638,7 +638,7 @@ JeonseLoop는 관심 아파트 단지의 매물 호가와 실거래가를 정기
 - 별도 DB 없이 Git 저장소 내 JSON/Markdown 파일을 상태 저장소로 사용한다.
 - 알림 채널은 Telegram Bot API이다.
 - 외부 데이터는 국토교통부 실거래가 공개 API와 부동산 포털 매물 정보이다.
-- LLM 2차 검수는 Anthropic API를 사용하며 호출을 최소화한다.
+- LLM 2차 검수는 OpenAI Responses API를 사용하며 호출을 최소화한다.
 - 매물 수집은 워치리스트 단지로만 제한한다.
 
 ## 10. 확인 필요 및 제안 사항

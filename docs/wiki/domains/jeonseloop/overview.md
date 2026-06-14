@@ -13,6 +13,7 @@ JeonseLoop는 관심 아파트 단지의 전세 매물, 실거래 기준선, 후
 - 선택적으로 `JEONSELOOP_TRADE_SOURCE_URL`을 설정하면 live 실거래 JSON을 기준선 계산에 사용할 수 있으며, 미설정 시 기존 `data/trades/{complex_id}.json` cache와 watchlist 목표가 폴백을 사용한다.
 - 실거래 기준선이 있으면 기준선 할인율로 후보를 판정하고, 없으면 watchlist 목표가로 폴백한다.
 - 후보 품질 관리는 제외 조건, 중복 보류, 알림 상한, LLM 검수 실패 보류를 알림 계획 전에 적용한다.
+- 선택적 LLM 검수는 `OPENAI_API_KEY`와 `JEONSELOOP_LLM_REVIEW=true`가 있을 때만 OpenAI Responses API로 실행하며, 응답 JSON 검증 실패나 네트워크 오류는 후보 보류로 처리한다.
 - 기준 개선 제안은 `data/state/criteria-suggestions.json`으로만 생성하며 `config/watchlist.yaml`은 자동 수정하지 않는다.
 
 ## 관련 문서
