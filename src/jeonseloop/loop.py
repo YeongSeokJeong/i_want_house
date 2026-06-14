@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import os
 from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
@@ -99,6 +100,7 @@ class LoopCoordinator:
                 reason="listing_source_unconfigured",
                 error=exc,
                 watched_complexes=len(watchlist.complexes),
+                target_complex_ids=tuple(target.complex_id for target in watchlist.complexes),
             )
         except (TransientListingFetchError, SourceFetchError) as exc:
             return self._record_runtime_failure(
@@ -108,6 +110,7 @@ class LoopCoordinator:
                 reason="collector_failed",
                 error=exc,
                 watched_complexes=len(watchlist.complexes),
+                target_complex_ids=tuple(target.complex_id for target in watchlist.complexes),
             )
         valid_records, invalid_records = self._validator.validate(raw_records)
         try:
@@ -120,6 +123,7 @@ class LoopCoordinator:
                 reason="trade_source_failed",
                 error=exc,
                 watched_complexes=len(watchlist.complexes),
+                target_complex_ids=tuple(target.complex_id for target in watchlist.complexes),
             )
         previous_averages = state_repository.load_previous_average_prices(
             tuple(target.complex_id for target in watchlist.complexes),
@@ -257,6 +261,7 @@ class LoopCoordinator:
         reason: str,
         error: Exception,
         watched_complexes: int,
+        target_complex_ids: tuple[str, ...] = (),
     ) -> dict[str, Any]:
         run_record = self._run_record(
             run_id,
@@ -272,7 +277,10 @@ class LoopCoordinator:
         )
         run_record["error"] = str(error)
         if not self._options.dry_run:
-            state_repository.write_failure_health(run_record)
+            state_repository.write_failure_health(
+                run_record,
+                diagnostics=_collector_diagnostics(run_record, reason, error, target_complex_ids),
+            )
         return run_record
 
 
@@ -286,3 +294,38 @@ def run_failure_health(options: LoopOptions, error: WatchlistError) -> dict[str,
 
 def _now() -> str:
     return datetime.now(tz=UTC).replace(microsecond=0).isoformat()
+
+
+def _collector_diagnostics(
+    run_record: dict[str, Any],
+    reason: str,
+    error: Exception,
+    target_complex_ids: tuple[str, ...],
+) -> dict[str, Any]:
+    return {
+        "run_id": run_record["run_id"],
+        "generated_at": run_record["finished_at"],
+        "run_reason": reason,
+        "failure_stage": _failure_stage(reason),
+        "source_kind": _listing_source_kind_for_diagnostics(),
+        "error_type": type(error).__name__,
+        "error": str(error),
+        "targets": [{"complex_id": complex_id} for complex_id in target_complex_ids],
+    }
+
+
+def _failure_stage(reason: str) -> str:
+    if reason in {"listing_source_unconfigured", "collector_failed"}:
+        return "listing_collection"
+    if reason == "trade_source_failed":
+        return "trade_collection"
+    return "runtime"
+
+
+def _listing_source_kind_for_diagnostics() -> str:
+    kind = os.environ.get("JEONSELOOP_LISTING_SOURCE_KIND", "").strip()
+    if kind:
+        return kind
+    if os.environ.get("JEONSELOOP_LISTING_SOURCE_URL", "").strip():
+        return "http-json"
+    return "unconfigured"

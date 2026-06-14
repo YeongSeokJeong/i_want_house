@@ -20,7 +20,7 @@
 |------------|--------------|--------|--------------|--------|---------|
 | F-001 | Collector source contract | DONE | 1 | - | 2026-06-14 |
 | F-002 | Naver listing adapter | DONE | 1 | - | 2026-06-14 |
-| F-003 | Failure diagnostics | TODO | 1 | - | 2026-06-14 |
+| F-003 | Failure diagnostics | DONE | 1 | - | 2026-06-14 |
 | F-004 | Actions recovery workflow | TODO | 1 | - | 2026-06-14 |
 | F-005 | Operator documentation | TODO | 1 | - | 2026-06-14 |
 
@@ -30,11 +30,12 @@
 | 1 | PLAN | Planning | Done | - | 2026-06-14 |
 | 1 | F-001 | Collector source contract | Done | - | 2026-06-14 |
 | 1 | F-002 | Naver listing adapter | Done | - | 2026-06-14 |
+| 1 | F-003 | Failure diagnostics | Done | - | 2026-06-14 |
 
 ## Next Session Instructions
-- Next Feature ID: F-003
-- Next Feature: Failure diagnostics
-- Description: Persist sanitized collector diagnostics for source failures and Actions artifact upload without replacing previous good state.
-- Key Files: `src/jeonseloop/sources.py`, `src/jeonseloop/loop.py`, `src/jeonseloop/persistence.py`, `tests/test_reliability.py`, `.github/workflows/jeonseloop.yml`
+- Next Feature ID: F-004
+- Next Feature: Actions recovery workflow
+- Description: Upload collector diagnostics from failed scheduled runs and add a reviewable recovery workflow/report path.
+- Key Files: `.github/workflows/jeonseloop.yml`, `.github/workflows/collector-recovery.yml`, `tests/test_workflow.py`
 - Dependencies Ready: yes
 - Known Issues: Live Naver request from the local environment returned HTTP 429, so diagnostics need to preserve this evidence without attempting bypass behavior.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 from typing import Any
 
 from .analyzer import Candidate, approved_candidates
@@ -77,7 +78,11 @@ class LoopStateRepository:
         _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_record["finished_at"])
         write_criteria_suggestions(logs_dir=logs_dir, data_dir=self._data_dir, generated_at=run_record["finished_at"])
 
-    def write_failure_health(self, run_record: dict[str, Any]) -> None:
+    def write_failure_health(
+        self,
+        run_record: dict[str, Any],
+        diagnostics: dict[str, Any] | None = None,
+    ) -> None:
         health_path = self._data_dir / "state" / "health.json"
         health_state = self._store.load_json(health_path, {"runs": []})
         runs = list(health_state.get("runs", []))
@@ -88,6 +93,11 @@ class LoopStateRepository:
         health_state["latest"] = run_record
         health_state["runs"] = runs[-10:]
         self._store.atomic_write_json(health_path, health_state)
+        if diagnostics is not None:
+            self._store.atomic_write_json(
+                self._data_dir / "state" / "collector-diagnostics.json",
+                sanitize_diagnostics(diagnostics),
+            )
 
     def load_previous_average_prices(self, complex_ids: list[str] | tuple[str, ...]) -> dict[str, int]:
         averages: dict[str, int] = {}
@@ -146,8 +156,12 @@ def persist_cycle(
     )
 
 
-def write_failure_health(data_dir: Path, run_record: dict[str, Any]) -> None:
-    LoopStateRepository(data_dir=data_dir).write_failure_health(run_record)
+def write_failure_health(
+    data_dir: Path,
+    run_record: dict[str, Any],
+    diagnostics: dict[str, Any] | None = None,
+) -> None:
+    LoopStateRepository(data_dir=data_dir).write_failure_health(run_record, diagnostics=diagnostics)
 
 
 def load_previous_average_prices(data_dir: Path, complex_ids: list[str] | tuple[str, ...]) -> dict[str, int]:
@@ -172,6 +186,34 @@ def _append_history(
     }
     history.setdefault("history", []).append(entry)
     atomic_write_json(path, history)
+
+
+def sanitize_diagnostics(payload: dict[str, Any]) -> dict[str, Any]:
+    return _sanitize_value(payload)
+
+
+def _sanitize_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): "[redacted]" if _is_sensitive_key(str(key)) else _sanitize_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_value(item) for item in value]
+    if isinstance(value, str):
+        return _redact_text(value)[:1000]
+    return value
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = key.lower()
+    return any(token in normalized for token in ("token", "secret", "api_key", "chat_id", "authorization"))
+
+
+def _redact_text(text: str) -> str:
+    redacted = re.sub(r"Bearer\s+[A-Za-z0-9._~+/=-]+", "Bearer [redacted]", text)
+    redacted = re.sub(r"(token|api[_-]?key|chat[_-]?id)=([^&\s]+)", r"\1=[redacted]", redacted, flags=re.I)
+    return redacted
 
 
 def _write_urgent_feed(path: Path, run_record: dict[str, Any], candidates: list[Candidate]) -> None:

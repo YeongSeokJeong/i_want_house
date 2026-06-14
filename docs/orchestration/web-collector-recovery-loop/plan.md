@@ -62,10 +62,10 @@
   - Redact secrets and limit stored response samples.
   - Persist diagnostics through validate-before-replace paths or Actions artifacts without replacing good state.
 - Acceptance Criteria:
-  - [ ] Collector failures include source kind, target, failure stage, and sanitized evidence.
-  - [ ] Diagnostics never include bearer tokens or Telegram/OpenAI secrets.
-  - [ ] Failed collector runs preserve previous listing/history JSON state.
-  - [ ] Tests cover redaction and artifact shape.
+  - [x] Collector failures include source kind, target, failure stage, and sanitized evidence.
+  - [x] Diagnostics never include bearer tokens or Telegram/OpenAI secrets.
+  - [x] Failed collector runs preserve previous listing/history JSON state.
+  - [x] Tests cover redaction and artifact shape.
 - Out of Scope:
   - Automated code editing.
 

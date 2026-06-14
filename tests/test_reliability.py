@@ -337,7 +337,18 @@ class ReliabilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
 
-            with patch.dict("os.environ", {"JEONSELOOP_LISTING_SOURCE_KIND": "naver"}, clear=True):
+            previous_listing = root / "data" / "listings" / "sample-apt.json"
+            previous_listing.parent.mkdir(parents=True)
+            previous_listing.write_text('{"listings":[{"listing_id":"previous"}]}', encoding="utf-8")
+
+            with patch.dict(
+                "os.environ",
+                {
+                    "JEONSELOOP_LISTING_SOURCE_KIND": "naver",
+                    "JEONSELOOP_SOURCE_BEARER_TOKEN": "secret-token",
+                },
+                clear=True,
+            ):
                 result = run_cycle(
                     LoopOptions(
                         watchlist_path=ROOT / "config" / "watchlist.yaml",
@@ -349,11 +360,36 @@ class ReliabilityTests(unittest.TestCase):
                 )
 
             health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+            diagnostics = json.loads(
+                (root / "data" / "state" / "collector-diagnostics.json").read_text(encoding="utf-8")
+            )
+            preserved_listing_text = previous_listing.read_text(encoding="utf-8")
 
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["reason"], "collector_failed")
         self.assertIn("JEONSELOOP_NAVER_COMPLEX_NO_MAP", result["error"])
         self.assertEqual(health["latest"]["reason"], "collector_failed")
+        self.assertEqual(diagnostics["source_kind"], "naver")
+        self.assertEqual(diagnostics["failure_stage"], "listing_collection")
+        self.assertEqual(diagnostics["targets"], [{"complex_id": "sample-apt"}])
+        self.assertNotIn("secret-token", json.dumps(diagnostics))
+        self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
+
+    def test_failure_diagnostics_redacts_sensitive_fields(self) -> None:
+        from jeonseloop.persistence import sanitize_diagnostics
+
+        sanitized = sanitize_diagnostics(
+            {
+                "Authorization": "Bearer raw-secret",
+                "message": "url=https://example.invalid?token=raw-secret&ok=1",
+                "nested": {"api_key": "raw-secret"},
+            }
+        )
+
+        text = json.dumps(sanitized)
+        self.assertNotIn("raw-secret", text)
+        self.assertEqual(sanitized["Authorization"], "[redacted]")
+        self.assertEqual(sanitized["nested"]["api_key"], "[redacted]")
 
     def test_health_tracks_failure_streak_and_last_success(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
