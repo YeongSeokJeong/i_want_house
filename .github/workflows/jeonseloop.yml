@@ -9,6 +9,10 @@ on:
         description: "Run without sending alerts or writing state"
         required: false
         default: "true"
+      fixture:
+        description: "Optional listing fixture path for dry-run verification"
+        required: false
+        default: "tests/fixtures/listings.json"
       send:
         description: "Allow Telegram sends when TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set"
         required: false
@@ -49,6 +53,9 @@ jobs:
           if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.dry_run }}" != "false" ]; then
             dry_run="true"
             args="$args --dry-run"
+            if [ -n "${{ inputs.fixture }}" ]; then
+              args="$args --fixture ${{ inputs.fixture }}"
+            fi
           fi
           if [ "${{ inputs.send }}" = "true" ]; then
             args="$args --send"

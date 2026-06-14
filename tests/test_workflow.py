@@ -40,6 +40,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('if [ "${{ inputs.send }}" = "true" ]; then', text)
         self.assertIn('args="$args --send"', text)
 
+    def test_manual_dry_run_uses_fixture_by_default(self) -> None:
+        text = WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("fixture:", text)
+        self.assertIn('default: "tests/fixtures/listings.json"', text)
+        self.assertIn('args="$args --fixture ${{ inputs.fixture }}"', text)
+
     def test_workflow_passes_live_source_configuration(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
 
