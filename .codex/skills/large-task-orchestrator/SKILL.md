@@ -2,7 +2,8 @@
 name: large-task-orchestrator
 description: |
   Orchestrates large multi-session development tasks by decomposing work into features,
-  enforcing test/QA gates, and preserving continuity through task-scoped plan/progress/decision/architecture files.
+  enforcing test/QA gates, preserving continuity through task-scoped plan/progress/decision/architecture files,
+  and synchronizing task outcomes with repo backlog items.
   Use this skill for /large-task-orchestrator start TASK_NAME, /large-task-orchestrator next TASK_NAME,
   /large-task-orchestrator revise TASK_NAME, /large-task-orchestrator status TASK_NAME, and /large-task-orchestrator done TASK_NAME.
   /large-task-orchestrator resume TASK_NAME is kept as a legacy alias of next.
@@ -45,19 +46,21 @@ Use one task-scoped directory per large task:
 3. **If task continuity files do not exist, treat the current session as Session 1 and initialize them.**
 4. **For `/large-task-orchestrator start <task-name>` with sparse requirements, run a short user interview first; do not start deep code reading before interview results are captured.**
 5. **For new requirements, run related-document discovery from `docs/wiki/` and the `wiki-write` routing rules before planning; capture relevant wiki pages, gaps, and any durable knowledge that should be added or updated.**
-6. **Never skip test and QA steps before committing.**
-7. **Never proceed to the next feature until the current feature passes test + QA and is committed.**
-8. **Plan revision is allowed, but only with explicit version bump and revision log update in `plan.md`, and MUST run via `/large-task-orchestrator revise <task-name>`.**
-9. **Always update `plan.md`, `progress.md`, and `decision.md` before ending a session, using `/large-task-orchestrator revise <task-name>` when updates are needed.**
-10. **`plan.md` must assign stable Feature IDs (for example `F-001`, `F-002`), and `progress.md` must track implementation status by the same IDs.**
-11. **`start` must create exactly one task branch for the whole large task and record it in continuity docs.**
-12. **`next`/`resume` must reuse that recorded task branch; do not create per-feature branches.**
-13. **Each feature must land as one feature-scoped commit on the shared task branch before moving to the next feature.**
-14. **Every commit message must follow Conventional Commits and reference the task + feature scope.**
+6. **Use `backlog-management` for repo backlog integration: classify the large task with a backlog route, link or create related `BL-*` items in `docs/backlog.md`, and record those IDs in orchestration docs.**
+7. **Keep the orchestration feature backlog separate from `docs/backlog.md`: Feature IDs (`F-*`) track implementation sequencing; Backlog IDs (`BL-*`) track repo-level work/result status.**
+8. **Never skip test and QA steps before committing.**
+9. **Never proceed to the next feature until the current feature passes test + QA and is committed.**
+10. **Plan revision is allowed, but only with explicit version bump and revision log update in `plan.md`, and MUST run via `/large-task-orchestrator revise <task-name>`.**
+11. **Always update `plan.md`, `progress.md`, `decision.md`, and related backlog items before ending a session, using `/large-task-orchestrator revise <task-name>` when continuity docs need structural updates.**
+12. **`plan.md` must assign stable Feature IDs (for example `F-001`, `F-002`), and `progress.md` must track implementation status by the same IDs.**
+13. **`start` must ask SCM Agent to request or prepare one dedicated task worktree and one task branch for the whole large task, then record both in continuity docs.**
+14. **`next`/`resume` must reuse the recorded task branch and task worktree; do not create per-feature branches or worktrees.**
+15. **Each feature must land as one feature-scoped commit on the shared task branch before moving to the next feature.**
+16. **Every commit message must follow Conventional Commits and reference the task + feature scope.**
    - Example: `feat(checkout-funnel/f-002): add invoice retry worker`
-15. **`next` is the execution lifecycle command: it handles session start/resume and session close/handoff for implementation flow.**
-16. **`revise` is documentation-only: it updates `plan.md`, `progress.md`, and `decision.md` without code implementation.**
-17. **`done` must write a final summary file in `./docs/handoff/` and run the `wiki-write` closeout check for durable wiki updates; do not update `README.md` in this step.**
+17. **`next` is the execution lifecycle command: it handles session start/resume and session close/handoff for implementation flow.**
+18. **`revise` is documentation-only: it updates `plan.md`, `progress.md`, `decision.md`, and backlog links/status when scope changes require it; it does not implement code.**
+19. **`done` must write a final summary file in `./docs/handoff/`, run the `wiki-write` closeout check for durable wiki updates, and close linked backlog items with `Artifact` and `Result`; do not update `README.md` in this step.**
 
 ## Workflow-Owned Agent Policy
 
@@ -92,6 +95,7 @@ If `<task-name>` is missing for the selected command, ask one question:
 
 - Use Conventional Commits.
 - Use the single task branch created by `/large-task-orchestrator start <task-name>`.
+- Use the task worktree recorded by `/large-task-orchestrator start <task-name>` when one is available.
 - Scope must include `<task-name>/<feature-id>`.
 - Each completed feature is represented by one final commit on that task branch.
 - Do not commit feature work without passing tests and QA.
@@ -111,3 +115,4 @@ refactor(checkout-funnel/f-003): separate aggregation service
 - [references/document-schemas.md](references/document-schemas.md)
 - [references/feature-slicing.md](references/feature-slicing.md)
 - [../wiki-write/SKILL.md](../wiki-write/SKILL.md)
+- [../backlog-management/SKILL.md](../backlog-management/SKILL.md)
