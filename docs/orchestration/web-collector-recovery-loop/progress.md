@@ -5,7 +5,7 @@
 - Task ID: web-collector-recovery-loop
 - Task Branch: task/web-collector-recovery-loop
 - Task Worktree: D:\git\i_want_house
-- Status: IN_PROGRESS
+- Status: COMPLETED
 - Plan Version: v1
 - Current Session: 1
 - Last Updated: 2026-06-14
@@ -13,7 +13,7 @@
 ## Related Backlog Items
 | Backlog ID | Route | Status | Artifact | Result |
 |------------|-------|--------|----------|--------|
-| BL-20260614-003 | source-code | Doing | `docs/orchestration/web-collector-recovery-loop/` | Planning initialized; implementation pending |
+| BL-20260614-003 | source-code | Done | `docs/handoff/web-collector-recovery-loop-final.md` | Naver collector, diagnostics, recovery workflow, and operator docs completed |
 
 ## Feature Implementation Status
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
