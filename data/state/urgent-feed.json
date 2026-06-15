@@ -1,22 +1,22 @@
 {
   "alert_cap_overflow": 0,
   "alert_limit": 5,
-  "generated_at": "2026-06-15T04:26:25+00:00",
+  "generated_at": "2026-06-15T15:17:14+00:00",
   "items": [
     {
       "alert_planned": false,
       "area_m2": 114.65,
-      "building": "302ë™",
+      "building": "302동",
       "complex_id": "baengnyeonsan-hillstate-3",
       "decision": "reject",
-      "description": "ì¡°ìš©í•˜ê³  ê³µê¸°ì¢‹ì€ ë¦¬ì¡°íŠ¸ëŠë‚Œ",
+      "description": "조용하고 공기좋은 리조트느낌",
       "floor": "3",
       "link": "https://hogangnono.com/apt/E152/item-catalog/13424976/0",
       "listing_key": "hogangnono:177322",
       "price_krw": 1300000000,
       "reason": "above_target_price",
-      "title": "ë°±ë ¨ì‚°ížìŠ¤í…Œì´íŠ¸3ì°¨"
+      "title": "백련산힐스테이트3차"
     }
   ],
-  "run_id": "e8c43aff-6643-4ccc-b5de-18e600f2bec9"
+  "run_id": "cdd83e81-eb53-4831-bf89-73e301cc52a6"
 }
