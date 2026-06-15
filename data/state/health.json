@@ -49,6 +49,40 @@
         "valid_listings": 1,
         "watched_complexes": 2
       },
+      "finished_at": "2026-06-15T01:59:11+00:00",
+      "reason": "completed",
+      "run_id": "d54922e3-8d34-4c1f-8c33-79adfffbe921",
+      "started_at": "2026-06-15T01:59:07+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-06-15T02:00:41+00:00",
+      "reason": "completed",
+      "run_id": "44af8bb3-1c82-4126-b376-fd47d97ef83a",
+      "started_at": "2026-06-15T02:00:37+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
       "finished_at": "2026-06-15T04:26:25+00:00",
       "reason": "completed",
       "run_id": "e8c43aff-6643-4ccc-b5de-18e600f2bec9",

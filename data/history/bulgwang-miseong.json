@@ -2,6 +2,22 @@
   "history": [
     {
       "average_price_krw": null,
+      "finished_at": "2026-06-15T01:59:11+00:00",
+      "listing_count": 0,
+      "min_price_krw": null,
+      "recent_trade_price_krw": null,
+      "run_id": "d54922e3-8d34-4c1f-8c33-79adfffbe921"
+    },
+    {
+      "average_price_krw": null,
+      "finished_at": "2026-06-15T02:00:41+00:00",
+      "listing_count": 0,
+      "min_price_krw": null,
+      "recent_trade_price_krw": null,
+      "run_id": "44af8bb3-1c82-4126-b376-fd47d97ef83a"
+    },
+    {
+      "average_price_krw": null,
       "finished_at": "2026-06-15T04:26:25+00:00",
       "listing_count": 0,
       "min_price_krw": null,
