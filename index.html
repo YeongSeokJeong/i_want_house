@@ -44,13 +44,33 @@
 
       <section class="panel chart-panel" aria-labelledby="chartTitle">
         <div class="section-heading">
-          <h2 id="chartTitle">시세 추이</h2>
+          <div>
+            <h2 id="chartTitle">수집 매물 가격 추이</h2>
+            <p class="section-copy">Actions가 실행될 때마다 찾은 매매 매물의 최저 호가와 평균 호가를 저장한 이력입니다. 실거래 기준선이 있으면 함께 표시합니다.</p>
+          </div>
           <select id="complexSelect" aria-label="단지 선택"></select>
         </div>
+        <div id="historySummary" class="history-summary">단지 이력을 불러오는 중입니다.</div>
+        <div class="chart-legend" aria-label="차트 범례">
+          <span><i class="legend-dot min-dot"></i>최저 호가</span>
+          <span><i class="legend-dot average-dot"></i>평균 호가</span>
+          <span><i class="legend-dot trade-dot"></i>실거래 기준선</span>
+        </div>
         <div class="chart-shell">
-          <canvas id="historyChart" width="920" height="360" aria-label="시세 추이 차트"></canvas>
+          <canvas id="historyChart" width="920" height="360" aria-label="수집 매물 가격 추이 차트"></canvas>
           <div id="chartEmpty" class="empty-state" hidden>히스토리 데이터가 아직 없습니다.</div>
         </div>
+      </section>
+
+      <section class="panel history-panel" aria-labelledby="runHistoryTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="runHistoryTitle">최근 수집/검색 이력</h2>
+            <p class="section-copy">GitHub Actions 실행별로 감시 단지, 정상 매물, 후보, 알림 계획 수를 보여줍니다.</p>
+          </div>
+          <span id="runHistoryCount" class="muted">0건</span>
+        </div>
+        <div id="runHistoryList" class="run-history-list"></div>
       </section>
 
       <section class="panel feed-panel" aria-labelledby="feedTitle">
