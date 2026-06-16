@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-06-15T15:17:14+00:00",
-  "last_success_run_id": "cdd83e81-eb53-4831-bf89-73e301cc52a6",
+  "last_success_at": "2026-06-16T04:22:00+00:00",
+  "last_success_run_id": "7582a0c2-2a5c-4e9c-8b25-d321097a1e86",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -14,10 +14,10 @@
       "valid_listings": 1,
       "watched_complexes": 2
     },
-    "finished_at": "2026-06-15T15:17:14+00:00",
+    "finished_at": "2026-06-16T04:22:00+00:00",
     "reason": "completed",
-    "run_id": "cdd83e81-eb53-4831-bf89-73e301cc52a6",
-    "started_at": "2026-06-15T15:17:10+00:00",
+    "run_id": "7582a0c2-2a5c-4e9c-8b25-d321097a1e86",
+    "started_at": "2026-06-16T04:21:56+00:00",
     "status": "success"
   },
   "runs": [
@@ -104,6 +104,23 @@
       "reason": "completed",
       "run_id": "cdd83e81-eb53-4831-bf89-73e301cc52a6",
       "started_at": "2026-06-15T15:17:10+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-06-16T04:22:00+00:00",
+      "reason": "completed",
+      "run_id": "7582a0c2-2a5c-4e9c-8b25-d321097a1e86",
+      "started_at": "2026-06-16T04:21:56+00:00",
       "status": "success"
     }
   ]
