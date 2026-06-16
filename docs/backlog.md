@@ -1,6 +1,6 @@
 # Backlog
 
-> Last updated: 2026-06-15
+> Last updated: 2026-06-17
 
 저장소의 후속 작업과 완료 결과를 관리한다. 세션 기록이나 진행 로그가 아니라, 다시 찾아 실행할 수 있는 작업 항목만 남긴다.
 
@@ -12,6 +12,8 @@
 ## Items
 | ID | Status | Route | Task | Context | Created | Completed | Artifact | Result |
 |---|---|---|---|---|---|---|---|---|
+| BL-20260617-001 | Done | source-code | 대시보드에 Actions 수집/검색 실행 이력을 표시하고 가격 추이 의미를 명확히 설명한다. | 사용자 요청: backlog에 검색한 이력이 UI에 나오도록 개선하고, "시세추이"가 무엇을 의미하는지 알기 어렵다고 함. 현재 `health.json`의 runs와 단지별 `history/*.json`은 저장되지만 UI 노출과 설명이 부족함. | 2026-06-17 | 2026-06-17 | `index.html`, `assets/dashboard.js`, `assets/dashboard.css`, `tests/test_dashboard_static.py`, `docs/wiki/domains/jeonseloop/overview.md`, `docs/orchestration/dashboard-history-clarity/`, `docs/handoff/dashboard-history-clarity-final.md` | 최근 수집/검색 이력 패널을 `health.runs` 기반으로 추가하고, 차트명을 `수집 매물 가격 추이`로 변경했으며, 최저/평균 호가 및 실거래 기준선 범례와 단지별 요약을 추가함. `docs/wiki/domains/jeonseloop/overview.md` `## 핵심 내용`에 dashboard 데이터 해석 규칙을 기록함. `node --check assets/dashboard.js`, `python -m unittest discover -s tests -v`, 로컬 정적 HTTP 스모크 검증 통과. |
+| BL-20260617-002 | Todo | source-code | 호갱노노에서 매매 매물이 0건으로 수집된 단지가 실제로 매매 매물이 없는지 크로스체크하고 진단 표시를 개선한다. | 사용자 요청: 호갱노노에서 매매 매물이 실제로 없는지 크로스 체크해서 점검하고 개선해야 함. 특히 수집 이력상 0건인 단지가 실제 무매물인지, 매핑/필터/API 응답 문제인지 운영자가 구분할 수 있어야 함. | 2026-06-17 | - | `src/jeonseloop/sources.py`, 테스트, 대시보드/운영 문서, orchestration/handoff 문서 | - |
 | BL-20260615-002 | Blocked | operator-doc | GitHub에서 정적 웹 대시보드를 바로 볼 수 있도록 GitHub Pages 공개 구성을 완료하고 접근 URL을 검증한다. | 사용자 요청: 정적 웹 형태로 GitHub에서 바로 보였으면 좋겠음. 기존 대시보드 파일과 JSON 상태는 있으나 GitHub Pages 공개 구성이 운영상 필요함. | 2026-06-15 | - | `docs/operations-verification-2026-06-15.md` | GitHub Pages API는 `404 Not Found`로 미활성 상태임. 현재 최신 대시보드/수집 상태가 `task/hogangnono-listing-source` 브랜치에 있어 브랜치 루트 공개 활성화는 명시 승인이 필요하므로 보류함. |
 | BL-20260615-003 | Done | operator-doc | JeonseLoop GitHub Actions를 dry-run이 아닌 실제 수집 모드로 운영 전환하고 첫 실행 결과를 검증한다. | 사용자 요청: 이제 dry-run하지 않고 수집을 시작하면 좋겠음. 운영 전환 시 source kind, 호갱노노 단지 매핑, Actions variables/secrets, 상태 파일 커밋 여부를 확인해야 함. | 2026-06-15 | 2026-06-15 | `docs/operations-verification-2026-06-15.md`, `https://github.com/YeongSeokJeong/i_want_house/actions/runs/27519619085`, `data/state/health.json` | 호갱노노 repository variables 설정, workflow 테스트 env 격리 커밋 `b4dea9c`, dry-run=false/send=false Actions 성공 run `27519619085`, 상태 커밋 `42add4c`, `data/state/health.json` 최신 success 결과를 기록함. |
 | BL-20260615-004 | Todo | operator-doc | watchlist 단지 추가와 수정 절차를 운영 문서로 정리하고 실제 예시를 보강한다. | 브레인스토밍 후보 C 선택: 운영자가 새 단지를 추가하거나 목표가, 제외 키워드, 단지 ID 매핑을 바꿀 때 따라야 할 절차가 필요함. | 2026-06-15 | - | `README.md` 또는 운영 가이드 문서 | - |

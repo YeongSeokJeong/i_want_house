@@ -1,5 +1,6 @@
 const COMPLEXES = [
-  { id: "sample-apt", name: "Sample Apartment", area: "84.9 m2" },
+  { id: "baengnyeonsan-hillstate-3", name: "백련산힐스테이트3차", area: "78.87 m2" },
+  { id: "bulgwang-miseong", name: "불광 미성아파트", area: "86.47 m2" },
 ];
 
 const currency = new Intl.NumberFormat("ko-KR");
@@ -27,6 +28,7 @@ async function renderHealth() {
   try {
     const health = await fetchJson("data/state/health.json");
     const latest = health.latest || health.runs?.at?.(-1);
+    renderRunHistory(health);
     if (!latest) {
       setStatus("unknown", "상태 미확인", "실행 기록이 아직 없습니다.", "-");
       setMetrics({});
@@ -38,7 +40,78 @@ async function renderHealth() {
   } catch (error) {
     setStatus("failed", "상태 오류", "상태 파일을 불러오지 못했습니다.", "-");
     setMetrics({});
+    renderRunHistory(null, "수집/검색 이력을 불러오지 못했습니다.");
   }
+}
+
+function renderRunHistory(health, errorMessage) {
+  const list = document.getElementById("runHistoryList");
+  const count = document.getElementById("runHistoryCount");
+  const runs = Array.isArray(health?.runs) ? [...health.runs] : [];
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    list.replaceChildren(emptyNode(errorMessage));
+    return;
+  }
+
+  if (runs.length === 0) {
+    count.textContent = "0건";
+    list.replaceChildren(emptyNode("수집/검색 실행 이력이 아직 없습니다."));
+    return;
+  }
+
+  const sorted = runs
+    .sort((a, b) => sortableTime(b.finished_at || b.started_at) - sortableTime(a.finished_at || a.started_at))
+    .slice(0, 8);
+  count.textContent = `${runs.length}건`;
+  list.replaceChildren(...sorted.map(runHistoryItem));
+}
+
+function runHistoryItem(run) {
+  const node = document.createElement("article");
+  node.className = "run-history-item";
+
+  const header = document.createElement("div");
+  header.className = "run-history-header";
+
+  const title = document.createElement("div");
+  title.className = "run-history-title";
+  title.textContent = formatTime(run.finished_at || run.started_at || "-");
+
+  const status = document.createElement("span");
+  status.className = `run-status run-status-${run.status || "unknown"}`;
+  status.textContent = statusLabel(run.status);
+
+  header.append(title, status);
+
+  const meta = document.createElement("div");
+  meta.className = "run-history-meta";
+  if (run.run_id) {
+    meta.append(span(`run ${shortRunId(run.run_id)}`));
+  }
+  if (run.reason) {
+    meta.append(span(run.reason));
+  }
+
+  const counts = run.counts || {};
+  const metrics = document.createElement("div");
+  metrics.className = "run-history-metrics";
+  metrics.append(
+    metricPill("감시", counts.watched_complexes),
+    metricPill("정상", counts.valid_listings),
+    metricPill("후보", counts.approved_candidates),
+    metricPill("알림", counts.notifications_sent),
+  );
+
+  node.append(header, meta, metrics);
+  return node;
+}
+
+function metricPill(label, value) {
+  const node = document.createElement("span");
+  node.textContent = `${label} ${numberOrDash(value)}`;
+  return node;
 }
 
 function setStatus(status, label, reason, finishedAt) {
@@ -64,14 +137,19 @@ async function renderSelectedComplex() {
 async function renderHistory(complexId) {
   const canvas = document.getElementById("historyChart");
   const empty = document.getElementById("chartEmpty");
+  const summary = document.getElementById("historySummary");
 
   try {
     const payload = await fetchJson(`data/history/${complexId}.json`);
     const history = Array.isArray(payload.history) ? payload.history : [];
+    renderHistorySummary(history, summary);
     if (history.length === 0 || !hasPriceData(history)) {
       canvas.hidden = true;
       empty.hidden = false;
-      empty.textContent = "히스토리 데이터가 아직 없습니다.";
+      empty.textContent =
+        history.length === 0
+          ? "히스토리 데이터가 아직 없습니다."
+          : "수집 이력은 있지만 표시할 가격 데이터가 아직 없습니다.";
       return;
     }
     empty.hidden = true;
@@ -81,7 +159,40 @@ async function renderHistory(complexId) {
     canvas.hidden = true;
     empty.hidden = false;
     empty.textContent = "히스토리 데이터를 불러오지 못했습니다.";
+    summary.textContent = "단지 이력을 불러오지 못했습니다.";
   }
+}
+
+function renderHistorySummary(history, target) {
+  if (history.length === 0) {
+    target.textContent = "아직 이 단지의 수집 이력이 없습니다.";
+    return;
+  }
+
+  const latest = [...history].sort((a, b) => sortableTime(b.finished_at) - sortableTime(a.finished_at))[0];
+  const totalListings = history.reduce((sum, item) => sum + Number(item.listing_count || 0), 0);
+  const latestListingCount = Number(latest.listing_count || 0);
+  const latestTime = formatTime(latest.finished_at || "-");
+
+  if (!hasPriceData(history)) {
+    target.textContent =
+      totalListings === 0
+        ? `최근 ${history.length}번 수집에서 매매 매물이 0건으로 기록되었습니다.`
+        : `최근 수집(${latestTime}) 기준 매물 ${latestListingCount}건이 기록됐지만 가격 집계가 없습니다.`;
+    return;
+  }
+
+  const parts = [`최근 수집 ${latestTime}`, `매물 ${latestListingCount}건`];
+  if (Number(latest.min_price_krw) > 0) {
+    parts.push(`최저 호가 ${formatPrice(latest.min_price_krw)}`);
+  }
+  if (Number(latest.average_price_krw) > 0) {
+    parts.push(`평균 호가 ${formatPrice(latest.average_price_krw)}`);
+  }
+  if (Number(latest.recent_trade_price_krw) > 0) {
+    parts.push(`실거래 기준선 ${formatPrice(latest.recent_trade_price_krw)}`);
+  }
+  target.textContent = parts.join(" · ");
 }
 
 async function renderFeed(complexId) {
@@ -132,6 +243,7 @@ function drawHistoryChart(canvas, history) {
   context.clearRect(0, 0, width, height);
   context.strokeStyle = "#dce4df";
   context.lineWidth = 1;
+  context.setLineDash([]);
   for (let i = 0; i < 5; i += 1) {
     const y = padding + ((height - padding * 2) / 4) * i;
     context.beginPath();
@@ -142,14 +254,15 @@ function drawHistoryChart(canvas, history) {
 
   drawSeries(context, history, "min_price_krw", "#16785f", width, height, padding, min, range);
   drawSeries(context, history, "average_price_krw", "#b84f39", width, height, padding, min, range);
+  drawSeries(context, history, "recent_trade_price_krw", "#4b5fc0", width, height, padding, min, range, [8, 6]);
 
   context.fillStyle = "#68736d";
   context.font = "13px Arial";
-  context.fillText(`최저 ${currency.format(min)}원`, padding, height - 16);
-  context.fillText(`최고 ${currency.format(max)}원`, padding, 24);
+  context.fillText(`최저 ${formatPrice(min)}`, padding, height - 16);
+  context.fillText(`최고 ${formatPrice(max)}`, padding, 24);
 }
 
-function drawSeries(context, history, key, color, width, height, padding, min, range) {
+function drawSeries(context, history, key, color, width, height, padding, min, range, dash = []) {
   const points = history
     .map((item, index) => ({ value: Number(item[key]), index }))
     .filter((point) => point.value > 0)
@@ -165,6 +278,7 @@ function drawSeries(context, history, key, color, width, height, padding, min, r
   context.strokeStyle = color;
   context.fillStyle = color;
   context.lineWidth = 3;
+  context.setLineDash(dash);
   context.beginPath();
   points.forEach((point, index) => {
     if (index === 0) {
@@ -174,6 +288,7 @@ function drawSeries(context, history, key, color, width, height, padding, min, r
     }
   });
   context.stroke();
+  context.setLineDash([]);
 
   points.forEach((point) => {
     context.beginPath();
@@ -192,7 +307,7 @@ function feedItem(item) {
   const meta = document.createElement("div");
   meta.className = "feed-meta";
   meta.append(
-    span(`호가 ${currency.format(Number(item.price_krw || 0))}원`),
+    span(`호가 ${formatPrice(Number(item.price_krw || 0))}`),
     span(`${item.building || "-"}동 / ${item.floor || "-"}층`),
     span(`${item.area_m2 || "-"} m2`),
   );
@@ -257,6 +372,11 @@ function numberOrDash(value) {
   return Number.isFinite(Number(value)) ? currency.format(Number(value)) : "-";
 }
 
+function formatPrice(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${currency.format(number)}원` : "-";
+}
+
 function formatTime(value) {
   if (!value || value === "-") {
     return "-";
@@ -266,4 +386,13 @@ function formatTime(value) {
     return value;
   }
   return date.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+}
+
+function sortableTime(value) {
+  const timestamp = new Date(value || 0).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function shortRunId(value) {
+  return String(value).length > 12 ? `${String(value).slice(0, 12)}...` : String(value);
 }
