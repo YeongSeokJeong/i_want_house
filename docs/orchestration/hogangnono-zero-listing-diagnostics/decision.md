@@ -25,3 +25,19 @@
 - Follow-up Notes:
   - `python -m unittest discover -s tests -v` passed 67 tests on 2026-06-17.
   - F-002 should keep UI copy focused on operator interpretation, not raw implementation details.
+
+## Session 2
+- Feature ID: F-002
+- Feature: Dashboard and operator visibility
+- Decisions:
+  - Add a compact `단지별 수집 진단` dashboard panel sourced from `health.latest.listing_diagnostics.targets[]`.
+  - Record live Hogangnono API evidence in task orchestration docs rather than in wiki, because exact counts are time-sensitive external-state evidence.
+  - Update the JeonseLoop overview wiki only with the durable interpretation rule for `empty_response`.
+- Alternatives Considered:
+  - Put diagnostics only in run history cards: rejected because per-complex zero states need a scan-friendly list.
+  - Store full Hogangnono response payloads: rejected to avoid unnecessary external data churn and oversized repo state.
+- Risks Introduced:
+  - Current live evidence can become stale as listings change; it is timestamped and treated as point-in-time evidence.
+- Follow-up Notes:
+  - `node --check assets/dashboard.js` passed.
+  - `python -m unittest discover -s tests -v` passed 67 tests.

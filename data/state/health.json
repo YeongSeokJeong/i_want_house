@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-06-16T13:28:59+00:00",
-  "last_success_run_id": "ab82c140-f7fc-4e26-a0ec-ec61801c6c00",
+  "last_success_at": "2026-06-17T03:15:35+00:00",
+  "last_success_run_id": "a30e22d4-437c-4e58-879c-994245459b97",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -14,10 +14,33 @@
       "valid_listings": 1,
       "watched_complexes": 2
     },
-    "finished_at": "2026-06-16T13:28:59+00:00",
+    "finished_at": "2026-06-17T03:15:35+00:00",
+    "listing_diagnostics": {
+      "source_kind": "hogangnono",
+      "targets": [
+        {
+          "complex_id": "baengnyeonsan-hillstate-3",
+          "diagnosis": "hogangnono_apt_items_returned",
+          "listing_count": 1,
+          "source_id": "E152",
+          "source_kind": "hogangnono",
+          "status": "listings_found",
+          "trade_types": "0"
+        },
+        {
+          "complex_id": "bulgwang-miseong",
+          "diagnosis": "hogangnono_apt_items_empty",
+          "listing_count": 0,
+          "source_id": "B11b",
+          "source_kind": "hogangnono",
+          "status": "empty_response",
+          "trade_types": "0"
+        }
+      ]
+    },
     "reason": "completed",
-    "run_id": "ab82c140-f7fc-4e26-a0ec-ec61801c6c00",
-    "started_at": "2026-06-16T13:28:56+00:00",
+    "run_id": "a30e22d4-437c-4e58-879c-994245459b97",
+    "started_at": "2026-06-17T03:15:33+00:00",
     "status": "success"
   },
   "runs": [
@@ -138,6 +161,46 @@
       "reason": "completed",
       "run_id": "ab82c140-f7fc-4e26-a0ec-ec61801c6c00",
       "started_at": "2026-06-16T13:28:56+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-06-17T03:15:35+00:00",
+      "listing_diagnostics": {
+        "source_kind": "hogangnono",
+        "targets": [
+          {
+            "complex_id": "baengnyeonsan-hillstate-3",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "E152",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          },
+          {
+            "complex_id": "bulgwang-miseong",
+            "diagnosis": "hogangnono_apt_items_empty",
+            "listing_count": 0,
+            "source_id": "B11b",
+            "source_kind": "hogangnono",
+            "status": "empty_response",
+            "trade_types": "0"
+          }
+        ]
+      },
+      "reason": "completed",
+      "run_id": "a30e22d4-437c-4e58-879c-994245459b97",
+      "started_at": "2026-06-17T03:15:33+00:00",
       "status": "success"
     }
   ]

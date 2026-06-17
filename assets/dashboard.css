@@ -78,6 +78,7 @@ h2 {
 .status-panel,
 .chart-panel,
 .history-panel,
+.diagnostics-panel,
 .feed-panel {
   padding: 18px;
 }
@@ -253,12 +254,18 @@ canvas {
   gap: 10px;
 }
 
+.diagnostics-list {
+  display: grid;
+  gap: 10px;
+}
+
 .run-history-list {
   display: grid;
   gap: 10px;
 }
 
 .run-history-item,
+.diagnostic-item,
 .feed-item {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -266,7 +273,8 @@ canvas {
   background: #fbfcfb;
 }
 
-.run-history-header {
+.run-history-header,
+.diagnostic-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -305,8 +313,32 @@ canvas {
   color: var(--warn);
 }
 
+.diagnostic-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.diagnostic-status-listings_found {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.diagnostic-status-empty_response {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.diagnostic-status-unknown {
+  background: #eceff3;
+  color: var(--muted);
+}
+
 .run-history-meta,
-.run-history-metrics {
+.run-history-metrics,
+.diagnostic-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -323,6 +355,25 @@ canvas {
   border-radius: 999px;
   padding: 4px 8px;
   background: #ffffff;
+}
+
+.diagnostic-item h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.diagnostic-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #ffffff;
+}
+
+.diagnostic-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .feed-item h3 {

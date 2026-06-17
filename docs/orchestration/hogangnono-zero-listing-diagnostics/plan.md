@@ -66,10 +66,10 @@
   - Update operator/wiki documentation with the interpretation rule.
   - Record live API cross-check evidence for the current watchlist mappings.
 - Acceptance Criteria:
-  - [ ] A user can tell whether a 0-count complex was collected successfully or blocked by source/mapping failure.
-  - [ ] Current Hogangnono API evidence for `E152` and `B11b` is recorded without secrets.
-  - [ ] Dashboard static tests cover the new diagnostic rendering.
-  - [ ] Wiki/backlog closeout names exact files and sections changed.
+  - [x] A user can tell whether a 0-count complex was collected successfully or blocked by source/mapping failure.
+  - [x] Current Hogangnono API evidence for `E152` and `B11b` is recorded without secrets.
+  - [x] Dashboard static tests cover the new diagnostic rendering.
+  - [x] Wiki/backlog closeout names exact files and sections changed.
 - Out of Scope:
   - Broader first-screen dashboard redesign tracked by `BL-20260617-003`.
 

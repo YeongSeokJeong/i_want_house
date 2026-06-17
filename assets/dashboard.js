@@ -29,6 +29,7 @@ async function renderHealth() {
     const health = await fetchJson("data/state/health.json");
     const latest = health.latest || health.runs?.at?.(-1);
     renderRunHistory(health);
+    renderCollectionDiagnostics(latest);
     if (!latest) {
       setStatus("unknown", "상태 미확인", "실행 기록이 아직 없습니다.", "-");
       setMetrics({});
@@ -41,6 +42,7 @@ async function renderHealth() {
     setStatus("failed", "상태 오류", "상태 파일을 불러오지 못했습니다.", "-");
     setMetrics({});
     renderRunHistory(null, "수집/검색 이력을 불러오지 못했습니다.");
+    renderCollectionDiagnostics(null, "수집 진단을 불러오지 못했습니다.");
   }
 }
 
@@ -111,6 +113,65 @@ function runHistoryItem(run) {
 function metricPill(label, value) {
   const node = document.createElement("span");
   node.textContent = `${label} ${numberOrDash(value)}`;
+  return node;
+}
+
+function renderCollectionDiagnostics(latest, errorMessage) {
+  const list = document.getElementById("collectionDiagnosticsList");
+  const count = document.getElementById("diagnosticsCount");
+  const targets = Array.isArray(latest?.listing_diagnostics?.targets) ? latest.listing_diagnostics.targets : [];
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    list.replaceChildren(emptyNode(errorMessage));
+    return;
+  }
+
+  if (targets.length === 0) {
+    count.textContent = "0건";
+    list.replaceChildren(emptyNode("최근 실행에 단지별 수집 진단이 없습니다."));
+    return;
+  }
+
+  count.textContent = `${targets.length}건`;
+  list.replaceChildren(...targets.map(collectionDiagnosticItem));
+}
+
+function collectionDiagnosticItem(target) {
+  const node = document.createElement("article");
+  node.className = "diagnostic-item";
+
+  const complex = COMPLEXES.find((item) => item.id === target.complex_id);
+  const header = document.createElement("div");
+  header.className = "diagnostic-header";
+
+  const title = document.createElement("h3");
+  title.textContent = complex?.name || target.complex_id || "단지";
+
+  const status = document.createElement("span");
+  status.className = `diagnostic-status diagnostic-status-${target.status || "unknown"}`;
+  status.textContent = diagnosticStatusLabel(target.status);
+
+  header.append(title, status);
+
+  const meta = document.createElement("div");
+  meta.className = "diagnostic-meta";
+  meta.append(span(`매물 ${numberOrDash(target.listing_count)}건`));
+  if (target.source_kind) {
+    meta.append(span(target.source_kind));
+  }
+  if (target.source_id) {
+    meta.append(span(`source ${target.source_id}`));
+  }
+  if (target.trade_types) {
+    meta.append(span(`tradeTypes ${target.trade_types}`));
+  }
+
+  const note = document.createElement("p");
+  note.className = "diagnostic-note";
+  note.textContent = diagnosticNote(target);
+
+  node.append(header, meta, note);
   return node;
 }
 
@@ -366,6 +427,29 @@ function statusLabel(status) {
     return "건너뜀";
   }
   return "상태 미확인";
+}
+
+function diagnosticStatusLabel(status) {
+  if (status === "listings_found") {
+    return "매물 확인";
+  }
+  if (status === "empty_response") {
+    return "0건 확인";
+  }
+  return "미확인";
+}
+
+function diagnosticNote(target) {
+  if (target.diagnosis === "hogangnono_apt_items_empty") {
+    return "호갱노노 매매 API가 정상 응답했지만 매물이 0건입니다.";
+  }
+  if (target.status === "listings_found") {
+    return "매물 source 응답에서 매물이 확인되었습니다.";
+  }
+  if (target.diagnosis) {
+    return target.diagnosis;
+  }
+  return "수집 진단 세부 정보가 없습니다.";
 }
 
 function numberOrDash(value) {

@@ -22,6 +22,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("수집 매물 가격 추이", html)
         self.assertIn("최저 호가와 평균 호가", html)
         self.assertIn("historySummary", html)
+        self.assertIn("단지별 수집 진단", html)
+        self.assertIn("collectionDiagnosticsList", html)
 
     def test_dashboard_fetches_committed_json_state(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -30,7 +32,9 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn('fetchJson("data/state/urgent-feed.json")', script)
         self.assertIn("data/history/${complexId}.json", script)
         self.assertIn("renderRunHistory", script)
+        self.assertIn("renderCollectionDiagnostics", script)
         self.assertIn("health?.runs", script)
+        self.assertIn("listing_diagnostics", script)
 
     def test_dashboard_has_section_local_error_and_empty_states(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -40,6 +44,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("후보 데이터를 불러오지 못했습니다.", script)
         self.assertIn("상태 파일을 불러오지 못했습니다.", script)
         self.assertIn("수집/검색 이력을 불러오지 못했습니다.", script)
+        self.assertIn("최근 실행에 단지별 수집 진단이 없습니다.", script)
+        self.assertIn("호갱노노 매매 API가 정상 응답했지만 매물이 0건입니다.", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -58,6 +64,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertEqual(health["latest"]["status"], "success")
         self.assertGreaterEqual(len(health["runs"]), 1)
         self.assertGreater(health["latest"]["counts"]["valid_listings"], 0)
+        self.assertIn("listing_diagnostics", health["latest"])
+        self.assertTrue(any(item["status"] == "empty_response" for item in health["latest"]["listing_diagnostics"]["targets"]))
         self.assertGreater(len(history["history"]), 0)
         self.assertTrue(any(item["min_price_krw"] for item in history["history"]))
         self.assertGreater(len(zero_history["history"]), 0)
