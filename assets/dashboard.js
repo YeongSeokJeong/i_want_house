@@ -20,6 +20,7 @@ const currency = new Intl.NumberFormat("ko-KR");
 document.addEventListener("DOMContentLoaded", () => {
   initComplexSelect();
   renderHealth();
+  renderDecisionSummary();
   renderSelectedComplex();
   document.getElementById("complexSelect").addEventListener("change", renderSelectedComplex);
 });
@@ -365,6 +366,162 @@ async function renderSelectedComplex() {
   await Promise.all([renderHistory(complexId), renderFeed(complexId)]);
 }
 
+async function renderDecisionSummary() {
+  const reasonList = document.getElementById("decisionReasonSummary");
+  const complexList = document.getElementById("complexDecisionSummary");
+  const count = document.getElementById("decisionSummaryCount");
+
+  try {
+    const payload = await fetchJson("data/state/urgent-feed.json");
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const summary = decisionSummary(items);
+    count.textContent = `${items.length}건`;
+
+    if (items.length === 0) {
+      reasonList.replaceChildren(emptyNode("최근 후보 사유가 아직 없습니다."));
+      complexList.replaceChildren(...COMPLEXES.map((complex) => complexDecisionItem(complex, null)));
+      return;
+    }
+
+    reasonList.replaceChildren(...summary.reasons.slice(0, 6).map(reasonSummaryItem));
+    complexList.replaceChildren(
+      ...COMPLEXES.map((complex) => complexDecisionItem(complex, summary.byComplex[complex.id] || null)),
+    );
+  } catch (error) {
+    count.textContent = "오류";
+    reasonList.replaceChildren(emptyNode("탈락/보류 사유를 불러오지 못했습니다."));
+    complexList.replaceChildren(emptyNode("단지별 후보 요약을 불러오지 못했습니다."));
+  }
+}
+
+function decisionSummary(items) {
+  const reasonMap = new Map();
+  const byComplex = {};
+
+  items.forEach((item) => {
+    const decision = item.decision || "unknown";
+    const reason = item.reason || "unknown_reason";
+    const complexId = item.complex_id || "unknown";
+    const key = `${decision}:${reason}`;
+    const reasonEntry = reasonMap.get(key) || { decision, reason, count: 0 };
+    reasonEntry.count += 1;
+    reasonMap.set(key, reasonEntry);
+
+    const complexEntry =
+      byComplex[complexId] ||
+      {
+        total: 0,
+        alertPlanned: 0,
+        decisions: { approve: 0, hold: 0, reject: 0, unknown: 0 },
+        reasons: new Map(),
+      };
+    complexEntry.total += 1;
+    complexEntry.alertPlanned += item.alert_planned ? 1 : 0;
+    const decisionKey = ["approve", "hold", "reject"].includes(decision) ? decision : "unknown";
+    complexEntry.decisions[decisionKey] += 1;
+    const complexReason = complexEntry.reasons.get(key) || { decision, reason, count: 0 };
+    complexReason.count += 1;
+    complexEntry.reasons.set(key, complexReason);
+    byComplex[complexId] = complexEntry;
+  });
+
+  Object.values(byComplex).forEach((entry) => {
+    entry.reasons = [...entry.reasons.values()].sort(compareReasonEntries);
+  });
+
+  return {
+    reasons: [...reasonMap.values()].sort(compareReasonEntries),
+    byComplex,
+  };
+}
+
+function compareReasonEntries(a, b) {
+  return b.count - a.count || decisionLabel(a.decision).localeCompare(decisionLabel(b.decision), "ko-KR");
+}
+
+function reasonSummaryItem(item) {
+  const node = document.createElement("article");
+  node.className = "reason-summary-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = reasonLabel(item.reason);
+  const count = document.createElement("span");
+  count.textContent = `${item.count}건`;
+  header.append(title, count);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  meta.append(span(decisionLabel(item.decision)), span(item.reason));
+
+  node.append(header, meta);
+  return node;
+}
+
+function complexDecisionItem(complex, summary) {
+  const node = document.createElement("article");
+  node.className = "complex-summary-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = complex.name;
+  const status = document.createElement("span");
+  status.textContent = complexSummaryStatus(summary);
+  header.append(title, status);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  if (!summary) {
+    meta.append(span("최근 후보 데이터 없음"));
+  } else {
+    meta.append(
+      span(`승인 ${summary.decisions.approve}건`),
+      span(`보류 ${summary.decisions.hold}건`),
+      span(`탈락 ${summary.decisions.reject}건`),
+      span(`알림 ${summary.alertPlanned}건`),
+    );
+  }
+
+  const reason = document.createElement("p");
+  reason.className = "summary-note";
+  reason.textContent = complexSummaryReason(summary);
+
+  node.append(header, meta, reason);
+  return node;
+}
+
+function complexSummaryStatus(summary) {
+  if (!summary || summary.total === 0) {
+    return "후보 없음";
+  }
+  if (summary.alertPlanned > 0) {
+    return `알림 계획 ${summary.alertPlanned}건`;
+  }
+  if (summary.decisions.hold > 0 && summary.decisions.reject > 0) {
+    return "보류/탈락";
+  }
+  if (summary.decisions.hold > 0) {
+    return "보류";
+  }
+  if (summary.decisions.reject > 0) {
+    return "탈락";
+  }
+  return "알림 없음";
+}
+
+function complexSummaryReason(summary) {
+  if (!summary || summary.total === 0) {
+    return "최근 feed에 이 단지 후보가 없습니다.";
+  }
+  const topReasons = summary.reasons
+    .slice(0, 3)
+    .map((item) => `${reasonLabel(item.reason)} ${item.count}건`)
+    .join(" · ");
+  return topReasons || "집계할 사유가 없습니다.";
+}
+
 async function renderHistory(complexId) {
   const canvas = document.getElementById("historyChart");
   const empty = document.getElementById("chartEmpty");
@@ -620,6 +777,47 @@ function diagnosticNote(target) {
     return target.diagnosis;
   }
   return "수집 진단 세부 정보가 없습니다.";
+}
+
+function decisionLabel(value) {
+  if (value === "approve") {
+    return "승인";
+  }
+  if (value === "hold") {
+    return "보류";
+  }
+  if (value === "reject") {
+    return "탈락";
+  }
+  return "미확인";
+}
+
+function reasonLabel(reason) {
+  if (reason === "target_price") {
+    return "희망가 기준 통과";
+  }
+  if (reason === "baseline_price") {
+    return "실거래 할인선 통과";
+  }
+  if (reason === "above_target_price") {
+    return "가격 기준 초과";
+  }
+  if (reason === "already_notified_without_price_drop") {
+    return "기존 알림가 이상";
+  }
+  if (reason?.startsWith("excluded:")) {
+    return `제외 키워드: ${reason.slice("excluded:".length)}`;
+  }
+  if (reason?.startsWith("duplicate_listing:")) {
+    return "중복 매물 보류";
+  }
+  if (reason?.startsWith("average_price_jump")) {
+    return "평균가 급변 품질 차단";
+  }
+  if (reason?.startsWith("llm_")) {
+    return `LLM 검수: ${reason.slice("llm_".length)}`;
+  }
+  return reason || "사유 없음";
 }
 
 function numberOrDash(value) {

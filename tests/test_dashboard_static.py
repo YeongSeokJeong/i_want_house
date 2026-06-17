@@ -34,6 +34,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("historySummary", html)
         self.assertIn("단지별 수집 진단", html)
         self.assertIn("collectionDiagnosticsList", html)
+        self.assertIn("탈락/보류 사유 요약", html)
+        self.assertIn("decisionReasonSummary", html)
+        self.assertIn("complexDecisionSummary", html)
+        self.assertLess(html.index("탈락/보류 사유 요약"), html.index("최근 급매 후보"))
 
     def test_dashboard_fetches_committed_json_state(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -50,6 +54,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("monitoringStatus", script)
         self.assertIn("renderRunHistory", script)
         self.assertIn("renderCollectionDiagnostics", script)
+        self.assertIn("renderDecisionSummary", script)
+        self.assertIn("decisionSummary", script)
+        self.assertIn("reasonLabel", script)
+        self.assertIn("complexSummaryReason", script)
         self.assertIn("health?.runs", script)
         self.assertIn("listing_diagnostics", script)
 
@@ -68,6 +76,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("희망가 상한", script)
         self.assertIn("실거래 할인선", script)
         self.assertIn("도달/초과", script)
+        self.assertIn("탈락/보류 사유를 불러오지 못했습니다.", script)
+        self.assertIn("최근 후보 사유가 아직 없습니다.", script)
+        self.assertIn("가격 기준 초과", script)
+        self.assertIn("중복 매물 보류", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -95,6 +107,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertGreater(len(listings["listings"]), 0)
         self.assertGreater(len(feed["items"]), 0)
         self.assertTrue(all("reason" in item for item in feed["items"]))
+        self.assertTrue(all("decision" in item for item in feed["items"]))
+        self.assertTrue(any(item["decision"] in {"approve", "hold", "reject"} for item in feed["items"]))
 
     def test_dashboard_summary_has_watchlist_threshold_metadata(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")

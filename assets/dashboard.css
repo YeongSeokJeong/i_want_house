@@ -80,6 +80,7 @@ h2 {
 .chart-panel,
 .history-panel,
 .diagnostics-panel,
+.decision-summary-panel,
 .feed-panel {
   padding: 18px;
 }
@@ -330,6 +331,23 @@ canvas {
   gap: 10px;
 }
 
+.decision-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+}
+
+.summary-column h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.reason-summary-list,
+.complex-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
 .run-history-list {
   display: grid;
   gap: 10px;
@@ -337,6 +355,8 @@ canvas {
 
 .run-history-item,
 .diagnostic-item,
+.reason-summary-item,
+.complex-summary-item,
 .feed-item {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -447,6 +467,43 @@ canvas {
   line-height: 1.45;
 }
 
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.summary-row span {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summary-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.summary-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .feed-item h3 {
   margin: 0 0 7px;
   font-size: 15px;
@@ -484,6 +541,10 @@ canvas {
 
   .chart-panel {
     grid-row: auto;
+  }
+
+  .decision-summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 
