@@ -81,6 +81,7 @@ h2 {
 .history-panel,
 .diagnostics-panel,
 .decision-summary-panel,
+.criteria-suggestions-panel,
 .feed-panel {
   padding: 18px;
 }
@@ -361,9 +362,28 @@ canvas {
 }
 
 .reason-summary-list,
-.complex-summary-list {
+.complex-summary-list,
+.suggestion-list {
   display: grid;
   gap: 8px;
+}
+
+.suggestion-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.suggestion-metrics div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfb;
+}
+
+.suggestion-metrics dd {
+  font-size: 16px;
 }
 
 .run-history-list {
@@ -375,6 +395,7 @@ canvas {
 .diagnostic-item,
 .reason-summary-item,
 .complex-summary-item,
+.suggestion-item,
 .feed-item {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -602,6 +623,10 @@ canvas {
   }
 
   .decision-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .suggestion-metrics {
     grid-template-columns: 1fr;
   }
 }

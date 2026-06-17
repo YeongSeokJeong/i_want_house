@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initComplexSelect();
   renderHealth();
   renderDecisionSummary();
+  renderCriteriaSuggestions();
   renderSelectedComplex();
   document.getElementById("complexSelect").addEventListener("change", renderSelectedComplex);
 });
@@ -392,6 +393,89 @@ async function renderDecisionSummary() {
     reasonList.replaceChildren(emptyNode("탈락/보류 사유를 불러오지 못했습니다."));
     complexList.replaceChildren(emptyNode("단지별 후보 요약을 불러오지 못했습니다."));
   }
+}
+
+async function renderCriteriaSuggestions() {
+  const list = document.getElementById("criteriaSuggestionsList");
+  const metrics = document.getElementById("criteriaSuggestionMetrics");
+  const count = document.getElementById("criteriaSuggestionsCount");
+
+  try {
+    const payload = await fetchOptionalJson("data/state/criteria-suggestions.json");
+    if (!payload) {
+      count.textContent = "대기";
+      metrics.replaceChildren();
+      list.replaceChildren(
+        emptyNode("기준 조정 제안은 아직 없습니다. 충분한 반복 실행 이력이 쌓이면 검토용 제안이 표시됩니다."),
+      );
+      return;
+    }
+
+    const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+    count.textContent = `${suggestions.length}건`;
+    metrics.replaceChildren(...criteriaSuggestionMetrics(payload));
+    if (suggestions.length === 0) {
+      list.replaceChildren(emptyNode("검토할 기준 조정 제안이 없습니다."));
+      return;
+    }
+    list.replaceChildren(...suggestions.map(criteriaSuggestionItem));
+  } catch (error) {
+    count.textContent = "오류";
+    metrics.replaceChildren();
+    list.replaceChildren(emptyNode("기준 조정 제안을 불러오지 못했습니다."));
+  }
+}
+
+function criteriaSuggestionMetrics(payload) {
+  const metrics = payload.metrics || {};
+  return [
+    suggestionMetric("상태", criteriaSuggestionStatusLabel(payload.status)),
+    suggestionMetric("판정 수", numberOrDash(payload.decision_count || metrics.total_decisions)),
+    suggestionMetric("오탐 신호", numberOrDash(metrics.false_positive_signals)),
+    suggestionMetric("오탐 비율", formatRatioPercent(metrics.false_positive_ratio)),
+    suggestionMetric("생성 시각", formatTime(payload.generated_at || "-")),
+    suggestionMetric("자동 적용", payload.auto_applied ? "예" : "아니오"),
+  ];
+}
+
+function suggestionMetric(label, value) {
+  const node = document.createElement("div");
+  const title = document.createElement("dt");
+  title.textContent = label;
+  const body = document.createElement("dd");
+  body.textContent = value || "-";
+  node.append(title, body);
+  return node;
+}
+
+function criteriaSuggestionItem(item) {
+  const node = document.createElement("article");
+  node.className = "suggestion-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = reasonLabel(item.reason);
+  const count = document.createElement("span");
+  count.textContent = `${numberOrDash(item.decision_count)}건`;
+  header.append(title, count);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  meta.append(
+    span(criteriaSuggestionSignalLabel(item.signal)),
+    span(item.requires_human_approval ? "사람 승인 필요" : "자동 승인 아님"),
+  );
+  if (item.reason) {
+    meta.append(span(item.reason));
+  }
+
+  const proposal = document.createElement("p");
+  proposal.className = "summary-note";
+  proposal.textContent = item.proposal || "검토 제안 내용이 없습니다.";
+
+  node.append(header, meta, proposal);
+  return node;
 }
 
 function decisionSummary(items) {
@@ -820,6 +904,17 @@ async function fetchJson(path) {
   return response.json();
 }
 
+async function fetchOptionalJson(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`${path}: ${response.status}`);
+  }
+  return response.json();
+}
+
 function statusLabel(status) {
   if (status === "success") {
     return "정상";
@@ -897,6 +992,26 @@ function reasonLabel(reason) {
   return reason || "사유 없음";
 }
 
+function criteriaSuggestionStatusLabel(status) {
+  if (status === "review_required") {
+    return "검토 필요";
+  }
+  if (status === "ready") {
+    return "준비됨";
+  }
+  return status || "대기";
+}
+
+function criteriaSuggestionSignalLabel(signal) {
+  if (signal === "false_positive") {
+    return "오탐 신호";
+  }
+  if (signal === "criteria_frequency") {
+    return "사유 빈도";
+  }
+  return signal || "신호 없음";
+}
+
 function numberOrDash(value) {
   return Number.isFinite(Number(value)) ? currency.format(Number(value)) : "-";
 }
@@ -917,6 +1032,14 @@ function formatPercent(value) {
     return "-";
   }
   return `${number >= 0 ? "+" : ""}${number.toFixed(1)}%`;
+}
+
+function formatRatioPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+  return `${(number * 100).toFixed(1)}%`;
 }
 
 function formatRemaining(value) {

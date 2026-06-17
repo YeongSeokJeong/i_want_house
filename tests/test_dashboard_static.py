@@ -38,6 +38,9 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("decisionReasonSummary", html)
         self.assertIn("complexDecisionSummary", html)
         self.assertLess(html.index("탈락/보류 사유 요약"), html.index("최근 급매 후보"))
+        self.assertIn("기준 조정 제안", html)
+        self.assertIn("criteriaSuggestionMetrics", html)
+        self.assertIn("criteriaSuggestionsList", html)
 
     def test_dashboard_fetches_committed_json_state(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -61,6 +64,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("candidateUrgencyGrade", script)
         self.assertIn("formatGradeDistance", script)
         self.assertIn("feedSection", script)
+        self.assertIn('fetchOptionalJson("data/state/criteria-suggestions.json")', script)
+        self.assertIn("renderCriteriaSuggestions", script)
+        self.assertIn("criteriaSuggestionItem", script)
+        self.assertIn("criteriaSuggestionStatusLabel", script)
         self.assertIn("health?.runs", script)
         self.assertIn("listing_diagnostics", script)
 
@@ -90,6 +97,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("관심", script)
         self.assertIn("멀리 있음", script)
         self.assertIn("급매선 +", script)
+        self.assertIn("기준 조정 제안은 아직 없습니다.", script)
+        self.assertIn("사람 승인 필요", script)
+        self.assertIn("검토 필요", script)
+        self.assertIn("오탐 신호", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
