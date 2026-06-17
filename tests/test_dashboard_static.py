@@ -17,6 +17,14 @@ class DashboardStaticTests(unittest.TestCase):
     def test_dashboard_exposes_collection_history_and_clear_trend_copy(self) -> None:
         html = (ROOT / "index.html").read_text(encoding="utf-8")
 
+        self.assertIn("단지별 감시 상태", html)
+        self.assertLess(html.index("단지별 감시 상태"), html.index("최근 급매 후보"))
+        self.assertIn("monitoringSummaryBody", html)
+        self.assertIn("희망가", html)
+        self.assertIn("최근 최저 호가", html)
+        self.assertIn("실거래 기준선", html)
+        self.assertIn("급매선", html)
+        self.assertIn("괴리율", html)
         self.assertIn("최근 수집/검색 이력", html)
         self.assertIn("runHistoryList", html)
         self.assertIn("수집 매물 가격 추이", html)
@@ -31,6 +39,10 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn('fetchJson("data/state/health.json")', script)
         self.assertIn('fetchJson("data/state/urgent-feed.json")', script)
         self.assertIn("data/history/${complexId}.json", script)
+        self.assertIn("renderMonitoringSummary", script)
+        self.assertIn("urgentLinePrice", script)
+        self.assertIn("priceGapRatio", script)
+        self.assertIn("monitoringStatus", script)
         self.assertIn("renderRunHistory", script)
         self.assertIn("renderCollectionDiagnostics", script)
         self.assertIn("health?.runs", script)
@@ -46,6 +58,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("수집/검색 이력을 불러오지 못했습니다.", script)
         self.assertIn("최근 실행에 단지별 수집 진단이 없습니다.", script)
         self.assertIn("호갱노노 매매 API가 정상 응답했지만 매물이 0건입니다.", script)
+        self.assertIn("단지별 감시 상태를 불러오지 못했습니다.", script)
+        self.assertIn("매물 0건", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -73,6 +87,13 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertGreater(len(listings["listings"]), 0)
         self.assertGreater(len(feed["items"]), 0)
         self.assertTrue(all("reason" in item for item in feed["items"]))
+
+    def test_dashboard_summary_has_watchlist_threshold_metadata(self) -> None:
+        script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
+
+        self.assertIn("targetPriceKrw: 850000000", script)
+        self.assertIn("urgentDiscountRatio: 0.12", script)
+        self.assertIn("Math.min(targetLine, baselineLine)", script)
 
 
 if __name__ == "__main__":

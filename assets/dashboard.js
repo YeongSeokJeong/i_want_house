@@ -1,6 +1,18 @@
 const COMPLEXES = [
-  { id: "baengnyeonsan-hillstate-3", name: "백련산힐스테이트3차", area: "78.87 m2" },
-  { id: "bulgwang-miseong", name: "불광 미성아파트", area: "86.47 m2" },
+  {
+    id: "baengnyeonsan-hillstate-3",
+    name: "백련산힐스테이트3차",
+    area: "78.87 m2",
+    targetPriceKrw: 850000000,
+    urgentDiscountRatio: 0.12,
+  },
+  {
+    id: "bulgwang-miseong",
+    name: "불광 미성아파트",
+    area: "86.47 m2",
+    targetPriceKrw: 850000000,
+    urgentDiscountRatio: 0.12,
+  },
 ];
 
 const currency = new Intl.NumberFormat("ko-KR");
@@ -30,6 +42,7 @@ async function renderHealth() {
     const latest = health.latest || health.runs?.at?.(-1);
     renderRunHistory(health);
     renderCollectionDiagnostics(latest);
+    await renderMonitoringSummary(latest);
     if (!latest) {
       setStatus("unknown", "상태 미확인", "실행 기록이 아직 없습니다.", "-");
       setMetrics({});
@@ -43,6 +56,7 @@ async function renderHealth() {
     setMetrics({});
     renderRunHistory(null, "수집/검색 이력을 불러오지 못했습니다.");
     renderCollectionDiagnostics(null, "수집 진단을 불러오지 못했습니다.");
+    renderMonitoringSummary(null, "단지별 감시 상태를 불러오지 못했습니다.");
   }
 }
 
@@ -114,6 +128,129 @@ function metricPill(label, value) {
   const node = document.createElement("span");
   node.textContent = `${label} ${numberOrDash(value)}`;
   return node;
+}
+
+async function renderMonitoringSummary(latest, errorMessage) {
+  const body = document.getElementById("monitoringSummaryBody");
+  const count = document.getElementById("monitoringCount");
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    body.replaceChildren(monitoringEmptyRow(errorMessage));
+    return;
+  }
+
+  try {
+    const histories = await Promise.all(
+      COMPLEXES.map(async (complex) => {
+        const payload = await fetchJson(`data/history/${complex.id}.json`);
+        return [complex.id, Array.isArray(payload.history) ? payload.history : []];
+      }),
+    );
+    const historyByComplex = Object.fromEntries(histories);
+    const diagnostics = diagnosticsByComplex(latest);
+    const rows = COMPLEXES.map((complex) =>
+      monitoringSummaryRow(complex, latestHistoryEntry(historyByComplex[complex.id] || []), diagnostics[complex.id]),
+    );
+
+    count.textContent = `${rows.length}건`;
+    body.replaceChildren(...rows);
+  } catch (error) {
+    count.textContent = "오류";
+    body.replaceChildren(monitoringEmptyRow("단지별 감시 상태를 불러오지 못했습니다."));
+  }
+}
+
+function monitoringSummaryRow(complex, latestHistory, diagnostic) {
+  const urgentLine = urgentLinePrice(complex, latestHistory);
+  const minPrice = positiveNumber(latestHistory?.min_price_krw);
+  const gapRatio = priceGapRatio(minPrice, urgentLine);
+  const status = monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine);
+  const row = document.createElement("tr");
+
+  row.append(
+    tableCell(complex.name, "monitoring-complex"),
+    tableCell(complex.area),
+    tableCell(formatPrice(complex.targetPriceKrw)),
+    tableCell(formatPrice(minPrice)),
+    tableCell(formatPrice(positiveNumber(latestHistory?.recent_trade_price_krw))),
+    tableCell(formatPrice(urgentLine)),
+    tableCell(formatPercent(gapRatio)),
+    monitoringStatusCell(status),
+  );
+  return row;
+}
+
+function monitoringEmptyRow(message) {
+  const row = document.createElement("tr");
+  const cell = tableCell(message);
+  cell.colSpan = 8;
+  row.append(cell);
+  return row;
+}
+
+function tableCell(text, className) {
+  const cell = document.createElement("td");
+  if (className) {
+    cell.className = className;
+  }
+  cell.textContent = text;
+  return cell;
+}
+
+function monitoringStatusCell(status) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `monitoring-status monitoring-status-${status.kind}`;
+  badge.textContent = status.label;
+  cell.append(badge);
+  return cell;
+}
+
+function diagnosticsByComplex(latest) {
+  const targets = Array.isArray(latest?.listing_diagnostics?.targets) ? latest.listing_diagnostics.targets : [];
+  return Object.fromEntries(targets.map((target) => [target.complex_id, target]));
+}
+
+function latestHistoryEntry(history) {
+  return [...history].sort((a, b) => sortableTime(b.finished_at) - sortableTime(a.finished_at))[0] || null;
+}
+
+function urgentLinePrice(complex, latestHistory) {
+  const targetLine = positiveNumber(complex.targetPriceKrw);
+  const tradeBaseline = positiveNumber(latestHistory?.recent_trade_price_krw);
+  if (!tradeBaseline) {
+    return targetLine;
+  }
+  const baselineLine = Math.floor(tradeBaseline * (1 - Number(complex.urgentDiscountRatio || 0)));
+  return targetLine ? Math.min(targetLine, baselineLine) : baselineLine;
+}
+
+function priceGapRatio(minPrice, urgentLine) {
+  if (!minPrice || !urgentLine) {
+    return null;
+  }
+  return ((minPrice - urgentLine) / urgentLine) * 100;
+}
+
+function monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine) {
+  if (diagnostic?.status === "empty_response" || Number(latestHistory?.listing_count || 0) === 0) {
+    return { kind: "empty", label: "매물 0건" };
+  }
+  if (!latestHistory) {
+    return { kind: "unknown", label: "이력 없음" };
+  }
+  if (!minPrice || !urgentLine) {
+    return { kind: "unknown", label: "기준 부족" };
+  }
+  const gap = priceGapRatio(minPrice, urgentLine);
+  if (gap <= 0) {
+    return { kind: "urgent", label: "급매권" };
+  }
+  if (gap <= 5) {
+    return { kind: "near", label: "근접" };
+  }
+  return { kind: "watch", label: "관망" };
 }
 
 function renderCollectionDiagnostics(latest, errorMessage) {
@@ -456,9 +593,22 @@ function numberOrDash(value) {
   return Number.isFinite(Number(value)) ? currency.format(Number(value)) : "-";
 }
 
+function positiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
 function formatPrice(value) {
   const number = Number(value);
-  return Number.isFinite(number) ? `${currency.format(number)}원` : "-";
+  return Number.isFinite(number) && number > 0 ? `${currency.format(number)}원` : "-";
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+  return `${number >= 0 ? "+" : ""}${number.toFixed(1)}%`;
 }
 
 function formatTime(value) {

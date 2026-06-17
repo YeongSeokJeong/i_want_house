@@ -76,11 +76,16 @@ h2 {
 }
 
 .status-panel,
+.monitoring-panel,
 .chart-panel,
 .history-panel,
 .diagnostics-panel,
 .feed-panel {
   padding: 18px;
+}
+
+.monitoring-panel {
+  grid-column: 1 / -1;
 }
 
 .chart-panel {
@@ -156,6 +161,72 @@ h2 {
   border-radius: 8px;
   padding: 12px;
   background: #fbfcfb;
+}
+
+.monitoring-table-wrap {
+  overflow-x: auto;
+}
+
+.monitoring-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.monitoring-table th,
+.monitoring-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.monitoring-table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.monitoring-complex {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.monitoring-status {
+  display: inline-block;
+  min-width: 68px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-status-urgent {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.monitoring-status-near {
+  background: #e7edff;
+  color: #3147a6;
+}
+
+.monitoring-status-watch {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.monitoring-status-empty,
+.monitoring-status-unknown {
+  background: #eceff3;
+  color: var(--muted);
 }
 
 dt {

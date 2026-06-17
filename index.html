@@ -16,6 +16,37 @@
     </header>
 
     <main class="layout">
+      <section class="panel monitoring-panel" aria-labelledby="monitoringTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="monitoringTitle">단지별 감시 상태</h2>
+            <p class="section-copy">희망가, 최근 최저 호가, 실거래 기준선, 급매선을 한눈에 비교합니다.</p>
+          </div>
+          <span id="monitoringCount" class="muted">0건</span>
+        </div>
+        <div class="monitoring-table-wrap">
+          <table class="monitoring-table">
+            <thead>
+              <tr>
+                <th scope="col">단지</th>
+                <th scope="col">평형</th>
+                <th scope="col">희망가</th>
+                <th scope="col">최근 최저 호가</th>
+                <th scope="col">실거래 기준선</th>
+                <th scope="col">급매선</th>
+                <th scope="col">괴리율</th>
+                <th scope="col">상태</th>
+              </tr>
+            </thead>
+            <tbody id="monitoringSummaryBody">
+              <tr>
+                <td colspan="8">단지별 감시 상태를 불러오는 중입니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="panel status-panel" aria-labelledby="statusTitle">
         <div class="section-heading">
           <h2 id="statusTitle">마지막 실행</h2>
