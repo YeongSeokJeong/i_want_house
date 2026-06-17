@@ -81,6 +81,8 @@ def call_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if not path.exists():
             return {"path": str(path), "updates": [], "message": "saved update file does not exist"}
         return json.loads(path.read_text(encoding="utf-8"))
+    if name == "telegram_triage_saved_updates":
+        return _triage_saved_updates(arguments)
     if name == "telegram_inspect_send_result":
         return _inspect_send_result(arguments)
     raise ToolError(f"unknown tool: {name}")
@@ -135,6 +137,26 @@ def _inspect_send_result(arguments: dict[str, Any]) -> dict[str, Any]:
         },
         "note": "Bot API does not provide arbitrary historical chat scraping; use sendMessage response, getChat, and getUpdates evidence.",
     }
+
+
+def _triage_saved_updates(arguments: dict[str, Any]) -> dict[str, Any]:
+    src_path = Path(__file__).resolve().parents[2] / "src"
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    try:
+        from jeonseloop.telegram_backlog_intake import IntakeOptions, run_intake
+    except Exception as exc:  # pragma: no cover - import boundary
+        raise ToolError(f"telegram backlog intake import failed: {type(exc).__name__}: {exc}") from exc
+    return run_intake(
+        IntakeOptions(
+            updates_path=Path(str(arguments.get("path") or "data/state/telegram-updates.json")),
+            state_path=Path(str(arguments.get("state_path") or "data/state/telegram-intake.json")),
+            backlog_path=Path(str(arguments.get("backlog_path") or "docs/backlog.md")),
+            today=str(arguments.get("today")) if arguments.get("today") else None,
+            chat_id=str(arguments.get("chat_id")) if arguments.get("chat_id") else None,
+            dry_run=bool(arguments.get("dry_run", False)),
+        )
+    )
 
 
 def _telegram_token(arguments: dict[str, Any]) -> str:
@@ -193,6 +215,7 @@ def _tools() -> list[dict[str, Any]]:
         _tool("telegram_get_chat", "Return chat metadata for chat_id or TELEGRAM_CHAT_ID."),
         _tool("telegram_save_recent_updates", "Save recent getUpdates output to a local JSON file."),
         _tool("telegram_read_saved_updates", "Read a saved Telegram updates JSON file."),
+        _tool("telegram_triage_saved_updates", "Triage saved Telegram updates into backlog rows or clarification drafts."),
         _tool("telegram_inspect_send_result", "Summarize a sendMessage response JSON object."),
     ]
 
@@ -213,6 +236,10 @@ def _tool(name: str, description: str) -> dict[str, Any]:
                 "allowed_updates": {"type": "array", "items": {"type": "string"}},
                 "output_path": {"type": "string"},
                 "path": {"type": "string"},
+                "state_path": {"type": "string"},
+                "backlog_path": {"type": "string"},
+                "today": {"type": "string"},
+                "dry_run": {"type": "boolean"},
                 "send_result": {},
             },
         },
