@@ -32,6 +32,7 @@ class IntakeOptions:
     timeout_seconds: int = 15
     env_file: Path | None = Path(".env")
     dry_run: bool = False
+    write_fetched_updates: bool = False
 
 
 def run_intake(options: IntakeOptions) -> dict[str, Any]:
@@ -42,7 +43,7 @@ def run_intake(options: IntakeOptions) -> dict[str, Any]:
         updates_payload = _fetch_updates(options, state)
         if updates_payload.get("status") == "skipped":
             return updates_payload
-        if not options.dry_run:
+        if not options.dry_run or options.write_fetched_updates:
             store.atomic_write_json(options.updates_path, updates_payload)
     updates = _extract_updates(updates_payload if updates_payload is not None else store.load_json(options.updates_path, {"updates": []}))
     processed_ids = {int(value) for value in state.get("processed_update_ids", [])}
@@ -61,6 +62,10 @@ def run_intake(options: IntakeOptions) -> dict[str, Any]:
             continue
         message = _message_from_update(update, options.chat_id)
         if message is None:
+            processed_ids.add(update_id)
+            skipped += 1
+            continue
+        if _is_ops_message(message["text"]):
             processed_ids.add(update_id)
             skipped += 1
             continue
@@ -228,6 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout-seconds", type=int, default=15)
     parser.add_argument("--env-file", default=".env")
     parser.add_argument("--dry-run", action="store_true", help="print result without writing backlog or intake state")
+    parser.add_argument("--write-fetched-updates", action="store_true", help="write fetched updates even in dry-run, for ephemeral workflow sharing")
     args = parser.parse_args(argv)
     env = _env_with_file(Path(args.env_file) if args.env_file else None)
     options = IntakeOptions(
@@ -242,6 +248,7 @@ def main(argv: list[str] | None = None) -> int:
         timeout_seconds=args.timeout_seconds,
         env_file=Path(args.env_file) if args.env_file else None,
         dry_run=args.dry_run,
+        write_fetched_updates=args.write_fetched_updates,
     )
     result = run_intake(options)
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -316,6 +323,11 @@ def _classify_route(normalized: str) -> str:
     if "backlog" in normalized or "백로그" in normalized:
         return "backlog"
     return "source-code"
+
+
+def _is_ops_message(text: str) -> bool:
+    stripped = text.strip().lower()
+    return stripped.startswith("/ops ") or stripped.startswith("ops:")
 
 
 def _artifact_for_route(route: str) -> str:

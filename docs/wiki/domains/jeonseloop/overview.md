@@ -6,6 +6,12 @@
 - 충분히 구체적인 요청은 `docs/backlog.md`에 `Todo` 행으로 추가하고, 대상이나 완료 기준이 부족한 요청은 `clarification_needed` 초안으로 상태 파일에 남긴다.
 - `.github/workflows/telegram-backlog-intake.yml`은 raw Telegram update 파일을 커밋하지 않고, 감사 가능한 intake 결과 상태와 백로그 변경만 커밋 대상으로 삼는다.
 
+## Telegram 운영 제안
+- 운영 자동화는 `/ops` 접두사가 있는 allowlist 명령만 처리하며, 자유문 요청은 운영 설정 변경으로 추정하지 않는다.
+- `/ops source`, `/ops naver-map`, `/ops trade-type`, `/ops target-price`, `/ops price-cap`, `/ops find-complex` 요청은 `data/state/telegram-ops.json`의 승인 필요 proposal로만 기록한다.
+- proposal은 `auto_applied=false`와 rollback note를 포함하며, `.env`, GitHub Secrets/Variables, `config/watchlist.yaml`을 직접 수정하지 않는다.
+- backlog intake와 ops proposal은 하나의 임시 `getUpdates` 결과를 공유해 Telegram offset 경합을 피하고, raw update payload는 커밋하지 않는다.
+
 ## 목적
 JeonseLoop는 관심 아파트 단지의 매매/전세 매물, 실거래 기준선, 후보 판정, 알림 상태를 Git 저장소의 JSON/Markdown 상태로 남기는 개인용 무인 감시 루프다.
 

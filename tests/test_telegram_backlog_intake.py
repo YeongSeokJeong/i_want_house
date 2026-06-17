@@ -171,6 +171,30 @@ class TelegramBacklogIntakeTests(unittest.TestCase):
         self.assertIn("token=[redacted]", result["excerpt"])
         self.assertNotIn("secret-value", result["excerpt"])
 
+    def test_ops_messages_are_skipped_by_backlog_intake(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            backlog = root / "docs" / "backlog.md"
+            updates = root / "data" / "state" / "telegram-updates.json"
+            state = root / "data" / "state" / "telegram-intake.json"
+            _write_backlog(backlog)
+            _write_updates(updates, [_update(500, "/ops source naver")])
+
+            result = run_intake(
+                IntakeOptions(
+                    updates_path=updates,
+                    state_path=state,
+                    backlog_path=backlog,
+                    today="2026-06-17",
+                )
+            )
+
+            self.assertEqual(result["accepted_count"], 0)
+            self.assertEqual(result["clarification_needed_count"], 0)
+            self.assertEqual(result["skipped_count"], 1)
+            persisted = json.loads(state.read_text(encoding="utf-8"))
+            self.assertEqual(persisted["processed_update_ids"], [500])
+
 
 def _write_backlog(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

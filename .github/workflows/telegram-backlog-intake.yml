@@ -42,7 +42,7 @@ jobs:
             exit 0
           fi
 
-          args="--fetch-updates --updates-path $RUNNER_TEMP/telegram-updates.json"
+          args="--fetch-updates --write-fetched-updates --updates-path $RUNNER_TEMP/telegram-updates.json"
           dry_run="false"
           if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.dry_run }}" != "false" ]; then
             args="$args --dry-run"
@@ -50,15 +50,25 @@ jobs:
           fi
           python -m jeonseloop.telegram_backlog_intake $args
           echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
+      - name: Triage Telegram ops proposals
+        run: |
+          args="--updates-path $RUNNER_TEMP/telegram-updates.json"
+          if [ "${{ steps.intake.outputs.dry_run }}" = "true" ]; then
+            args="$args --dry-run"
+          fi
+          python -m jeonseloop.telegram_ops $args
       - name: Persist intake backlog and state
         if: steps.intake.outputs.dry_run == 'false'
         run: |
-          if git diff --quiet -- docs/backlog.md data/state/telegram-intake.json; then
+          if git diff --quiet -- docs/backlog.md data/state/telegram-intake.json data/state/telegram-ops.json; then
             echo "No Telegram backlog intake changes to persist."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/backlog.md data/state/telegram-intake.json
+          if [ -f data/state/telegram-ops.json ]; then
+            git add data/state/telegram-ops.json
+          fi
           git commit -m "chore(telegram-intake): persist backlog intake state [skip ci]"
           git push

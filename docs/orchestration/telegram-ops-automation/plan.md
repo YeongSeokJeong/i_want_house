@@ -37,7 +37,7 @@
 ## Related Backlog Items
 | Backlog ID | Route | Status | Relationship |
 |------------|-------|--------|--------------|
-| BL-20260617-011 | source-code | Doing | Parent task item for this orchestration |
+| BL-20260617-011 | source-code | Done | Parent task item for this orchestration |
 
 ## Feature Catalog
 | Feature ID | Feature Name | Goal | Depends On | Complexity | Owner |
@@ -68,9 +68,9 @@
   - Add complex lookup guidance or research task generation when identifiers are missing.
   - Document operator approval path.
 - Acceptance Criteria:
-  - [ ] Workflow uses temporary raw update storage and commits only `data/state/telegram-ops.json`.
-  - [ ] Missing complex identifiers generate reviewable lookup guidance, not silent failure.
-  - [ ] Operator docs/wiki explain approval boundary and rollback state.
+  - [x] Workflow uses temporary raw update storage and commits only `data/state/telegram-ops.json`.
+  - [x] Missing complex identifiers generate reviewable lookup guidance, not silent failure.
+  - [x] Operator docs/wiki explain approval boundary and rollback state.
 - Out of Scope:
   - Fully autonomous PR merge or live secret changes.
 
