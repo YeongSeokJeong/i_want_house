@@ -50,11 +50,19 @@
     },
     {
       "average_price_krw": null,
-      "finished_at": "2026-06-17T03:15:35+00:00",
+      "finished_at": "2026-06-17T04:17:08+00:00",
       "listing_count": 0,
       "min_price_krw": null,
       "recent_trade_price_krw": null,
-      "run_id": "a30e22d4-437c-4e58-879c-994245459b97"
+      "run_id": "821df56c-e84c-4b2a-9a24-1296381587ea"
+    },
+    {
+      "average_price_krw": null,
+      "finished_at": "2026-06-17T12:52:55+00:00",
+      "listing_count": 0,
+      "min_price_krw": null,
+      "recent_trade_price_krw": null,
+      "run_id": "a0f59461-f019-4f62-a8a7-8c0c5099e210"
     }
   ]
 }
