@@ -49,6 +49,36 @@
         </div>
       </section>
 
+      <section class="panel readiness-panel" aria-labelledby="readinessTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="readinessTitle">데이터 품질/기준선 준비 상태</h2>
+            <p class="section-copy">단지별 최근 수집, 0건 연속 여부, 실거래 기준선, 품질 차단 상태를 분리해서 확인합니다.</p>
+          </div>
+          <span id="readinessCount" class="muted">0건</span>
+        </div>
+        <div class="readiness-table-wrap">
+          <table class="readiness-table">
+            <thead>
+              <tr>
+                <th scope="col">단지</th>
+                <th scope="col">최근 수집</th>
+                <th scope="col">수집 건수</th>
+                <th scope="col">0건 연속</th>
+                <th scope="col">실거래 기준선</th>
+                <th scope="col">품질 차단</th>
+                <th scope="col">수집 상태</th>
+              </tr>
+            </thead>
+            <tbody id="dataReadinessBody">
+              <tr>
+                <td colspan="7">데이터 준비 상태를 불러오는 중입니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="panel status-panel" aria-labelledby="statusTitle">
         <div class="section-heading">
           <h2 id="statusTitle">마지막 실행</h2>

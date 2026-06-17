@@ -45,6 +45,7 @@ async function renderHealth() {
     renderRunHistory(health);
     renderCollectionDiagnostics(latest);
     await renderMonitoringSummary(latest);
+    await renderDataReadiness(latest);
     if (!latest) {
       setStatus("unknown", "상태 미확인", "실행 기록이 아직 없습니다.", "-");
       setMetrics({});
@@ -59,6 +60,7 @@ async function renderHealth() {
     renderRunHistory(null, "수집/검색 이력을 불러오지 못했습니다.");
     renderCollectionDiagnostics(null, "수집 진단을 불러오지 못했습니다.");
     renderMonitoringSummary(null, "단지별 감시 상태를 불러오지 못했습니다.");
+    renderDataReadiness(null, "데이터 준비 상태를 불러오지 못했습니다.");
   }
 }
 
@@ -286,6 +288,120 @@ function monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine) {
     return { kind: "near", label: "근접" };
   }
   return { kind: "watch", label: "관망" };
+}
+
+async function renderDataReadiness(latest, errorMessage) {
+  const body = document.getElementById("dataReadinessBody");
+  const count = document.getElementById("readinessCount");
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    body.replaceChildren(readinessEmptyRow(errorMessage));
+    return;
+  }
+
+  try {
+    const histories = await Promise.all(
+      COMPLEXES.map(async (complex) => {
+        const payload = await fetchJson(`data/history/${complex.id}.json`).catch(() => ({ history: [] }));
+        return [complex.id, Array.isArray(payload.history) ? payload.history : []];
+      }),
+    );
+    const feed = await fetchJson("data/state/urgent-feed.json").catch(() => ({ items: [] }));
+    const feedItems = Array.isArray(feed.items) ? feed.items : [];
+    const historyByComplex = Object.fromEntries(histories);
+    const diagnostics = diagnosticsByComplex(latest);
+    const rows = COMPLEXES.map((complex) =>
+      dataReadinessRow(
+        complex,
+        historyByComplex[complex.id] || [],
+        diagnostics[complex.id],
+        feedItems.filter((item) => item.complex_id === complex.id),
+      ),
+    );
+
+    count.textContent = `${rows.length}건`;
+    body.replaceChildren(...rows);
+  } catch (error) {
+    count.textContent = "오류";
+    body.replaceChildren(readinessEmptyRow("데이터 준비 상태를 불러오지 못했습니다."));
+  }
+}
+
+function dataReadinessRow(complex, history, diagnostic, feedItems) {
+  const latest = latestHistoryEntry(history);
+  const listingCount = Number(latest?.listing_count);
+  const baselineReady = positiveNumber(latest?.recent_trade_price_krw);
+  const quality = qualityBlockStatus(feedItems);
+  const source = readinessSourceStatus(diagnostic, latest);
+  const row = document.createElement("tr");
+
+  row.append(
+    tableCell(complex.name, "monitoring-complex"),
+    tableCell(formatTime(latest?.finished_at || "-")),
+    tableCell(Number.isFinite(listingCount) ? `${currency.format(listingCount)}건` : "-"),
+    tableCell(`${consecutiveZeroListings(history)}회`),
+    readinessStatusCell(baselineReady ? "ready" : "missing", baselineReady ? "있음" : "없음"),
+    readinessStatusCell(quality.kind, quality.label),
+    readinessStatusCell(source.kind, source.label),
+  );
+  return row;
+}
+
+function readinessEmptyRow(message) {
+  const row = document.createElement("tr");
+  const cell = tableCell(message);
+  cell.colSpan = 7;
+  row.append(cell);
+  return row;
+}
+
+function readinessStatusCell(kind, label) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `readiness-status readiness-status-${kind}`;
+  badge.textContent = label;
+  cell.append(badge);
+  return cell;
+}
+
+function consecutiveZeroListings(history) {
+  const sorted = [...history].sort((a, b) => sortableTime(b.finished_at) - sortableTime(a.finished_at));
+  let count = 0;
+  for (const entry of sorted) {
+    if (Number(entry?.listing_count || 0) === 0) {
+      count += 1;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+function qualityBlockStatus(feedItems) {
+  if (feedItems.some((item) => String(item.reason || "").startsWith("average_price_jump"))) {
+    return { kind: "blocked", label: "품질 차단" };
+  }
+  if (feedItems.length === 0) {
+    return { kind: "unknown", label: "후보 없음" };
+  }
+  return { kind: "ready", label: "미차단" };
+}
+
+function readinessSourceStatus(diagnostic, latestHistory) {
+  if (diagnostic?.status === "listings_found") {
+    return { kind: "ready", label: "수집 정상" };
+  }
+  if (diagnostic?.status === "empty_response") {
+    return { kind: "warning", label: "0건 확인" };
+  }
+  if (!latestHistory) {
+    return { kind: "unknown", label: "이력 없음" };
+  }
+  if (Number(latestHistory.listing_count || 0) === 0) {
+    return { kind: "warning", label: "매물 0건" };
+  }
+  return { kind: "ready", label: "수집 기록" };
 }
 
 function renderCollectionDiagnostics(latest, errorMessage) {
