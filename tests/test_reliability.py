@@ -237,9 +237,11 @@ class ReliabilityTests(unittest.TestCase):
         fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono"})
 
         self.assertIsNotNone(fetcher)
-        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_HOGANGNONO_APT_HASH_MAP"):
+        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_HOGANGNONO_APT_HASH_MAP") as raised:
             assert fetcher is not None
             fetcher(TARGET)
+        self.assertIn("missing complex_id 'sample-apt'", str(raised.exception))
+        self.assertIn('{"sample-apt":"<hogangnono_apt_hash>"}', str(raised.exception))
 
     def test_hogangnono_source_kind_accepts_direct_apt_hash(self) -> None:
         seen_urls: list[str] = []
@@ -381,6 +383,11 @@ class ReliabilityTests(unittest.TestCase):
         )
         self.assertEqual(baseline_candidates[0].decision, "approve")
         self.assertEqual(baseline_candidates[0].reason, "baseline_price")
+        self.assertEqual(baseline_candidates[0].listing["target_price_krw"], 840000000)
+        self.assertEqual(baseline_candidates[0].listing["recent_trade_price_krw"], 925000000)
+        self.assertEqual(baseline_candidates[0].listing["baseline_limit_krw"], 832500000)
+        self.assertEqual(baseline_candidates[0].listing["target_gap_krw"], -8000000)
+        self.assertEqual(baseline_candidates[0].listing["baseline_gap_krw"], -500000)
 
         fallback_candidates = classify_candidates(
             (TARGET,),
@@ -505,11 +512,94 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["reason"], "collector_failed")
         self.assertIn("JEONSELOOP_HOGANGNONO_APT_HASH_MAP", result["error"])
+        self.assertIn("baengnyeonsan-hillstate-3", result["error"])
         self.assertEqual(health["latest"]["reason"], "collector_failed")
         self.assertEqual(diagnostics["source_kind"], "hogangnono")
         self.assertEqual(diagnostics["failure_stage"], "listing_collection")
+        self.assertEqual(diagnostics["required_env"], "JEONSELOOP_HOGANGNONO_APT_HASH_MAP")
+        self.assertEqual(
+            diagnostics["missing_mapping_targets"],
+            [
+                {
+                    "complex_id": "baengnyeonsan-hillstate-3",
+                    "example_entry": '"baengnyeonsan-hillstate-3":"<hogangnono_apt_hash>"',
+                },
+                {
+                    "complex_id": "bulgwang-miseong",
+                    "example_entry": '"bulgwang-miseong":"<hogangnono_apt_hash>"',
+                },
+            ],
+        )
         self.assertNotIn("secret-token", json.dumps(diagnostics))
         self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
+
+    def test_cycle_records_hogangnono_zero_listing_diagnostics(self) -> None:
+        def opener(req, timeout: int) -> object:
+            if "/E152/" in req.full_url:
+                return _JsonResponse(
+                    {
+                        "data": {
+                            "aptItems": [
+                                {
+                                    "aptHash": "E152",
+                                    "aptName": "백련산힐스테이트3차",
+                                    "areaHoId": 13424976,
+                                    "itemId": 177322,
+                                    "tradeType": 0,
+                                    "deposit": 130000,
+                                    "floor": 3,
+                                    "sizeM2": 114.65,
+                                }
+                            ],
+                            "aptItemTotalCount": 1,
+                        },
+                        "status": "success",
+                    }
+                )
+            if "/B11b/" in req.full_url:
+                return _JsonResponse({"data": {"aptItems": [], "aptItemTotalCount": 0}, "status": "success"})
+            raise AssertionError(f"unexpected URL {req.full_url}")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+
+            with (
+                patch.dict(
+                    "os.environ",
+                    {
+                        "JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono",
+                        "JEONSELOOP_HOGANGNONO_APT_HASH_MAP": (
+                            '{"baengnyeonsan-hillstate-3":"E152","bulgwang-miseong":"B11b"}'
+                        ),
+                        "JEONSELOOP_HOGANGNONO_TRADE_TYPES": "0",
+                    },
+                    clear=True,
+                ),
+                patch("jeonseloop.sources.request.urlopen", side_effect=opener),
+            ):
+                result = run_cycle(
+                    LoopOptions(
+                        watchlist_path=ROOT / "config" / "watchlist.yaml",
+                        data_dir=root / "data",
+                        logs_dir=root / "logs",
+                        dry_run=False,
+                        allow_send=False,
+                    )
+                )
+
+            health = json.loads((root / "data" / "state" / "health.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(result["status"], "success")
+        diagnostics = health["latest"]["listing_diagnostics"]
+        self.assertEqual(diagnostics["source_kind"], "hogangnono")
+        targets = {target["complex_id"]: target for target in diagnostics["targets"]}
+        self.assertEqual(targets["baengnyeonsan-hillstate-3"]["status"], "listings_found")
+        self.assertEqual(targets["baengnyeonsan-hillstate-3"]["listing_count"], 1)
+        self.assertEqual(targets["bulgwang-miseong"]["status"], "empty_response")
+        self.assertEqual(targets["bulgwang-miseong"]["listing_count"], 0)
+        self.assertEqual(targets["bulgwang-miseong"]["source_id"], "B11b")
+        self.assertEqual(targets["bulgwang-miseong"]["trade_types"], "0")
+        self.assertEqual(targets["bulgwang-miseong"]["diagnosis"], "hogangnono_apt_items_empty")
 
     def test_failure_diagnostics_redacts_sensitive_fields(self) -> None:
         from jeonseloop.persistence import sanitize_diagnostics

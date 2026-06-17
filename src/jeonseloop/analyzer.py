@@ -46,17 +46,18 @@ class CandidateAnalyzer:
                 int(baseline_price * (1 - target.urgent_discount_ratio)) if baseline_price is not None else None
             )
             for record, duplicate_of in _dedupe(records):
+                listing = _candidate_listing(record, target, baseline_price, baseline_limit)
                 key = listing_key(record)
                 price = int(record["price_krw"])
                 if duplicate_of is not None:
                     candidates.append(
-                        Candidate(complex_id, key, price, "hold", f"duplicate_listing:{duplicate_of}", record)
+                        Candidate(complex_id, key, price, "hold", f"duplicate_listing:{duplicate_of}", listing)
                     )
                     continue
 
                 excluded_by = _exclusion_match(target, record)
                 if excluded_by is not None:
-                    candidates.append(Candidate(complex_id, key, price, "reject", f"excluded:{excluded_by}", record))
+                    candidates.append(Candidate(complex_id, key, price, "reject", f"excluded:{excluded_by}", listing))
                     continue
 
                 previous = notified.get(key, {}) if isinstance(notified, dict) else {}
@@ -64,16 +65,16 @@ class CandidateAnalyzer:
 
                 if previous_price is not None and price >= int(previous_price):
                     candidates.append(
-                        Candidate(complex_id, key, price, "hold", "already_notified_without_price_drop", record)
+                        Candidate(complex_id, key, price, "hold", "already_notified_without_price_drop", listing)
                     )
                     continue
 
                 if baseline_limit is not None and price <= baseline_limit:
-                    candidates.append(Candidate(complex_id, key, price, "approve", "baseline_price", record))
+                    candidates.append(Candidate(complex_id, key, price, "approve", "baseline_price", listing))
                 elif price <= target.target_price_krw:
-                    candidates.append(Candidate(complex_id, key, price, "approve", "target_price", record))
+                    candidates.append(Candidate(complex_id, key, price, "approve", "target_price", listing))
                 else:
-                    candidates.append(Candidate(complex_id, key, price, "reject", "above_target_price", record))
+                    candidates.append(Candidate(complex_id, key, price, "reject", "above_target_price", listing))
 
         return candidates
 
@@ -196,3 +197,22 @@ def _exclusion_match(target: WatchTarget, record: dict[str, Any]) -> str | None:
         if normalized and normalized in haystack:
             return token
     return None
+
+
+def _candidate_listing(
+    record: dict[str, Any],
+    target: WatchTarget,
+    baseline_price: int | None,
+    baseline_limit: int | None,
+) -> dict[str, Any]:
+    listing = dict(record)
+    listing["watch_name"] = target.name
+    listing["target_price_krw"] = target.target_price_krw
+    listing["urgent_discount_ratio"] = target.urgent_discount_ratio
+    listing["target_gap_krw"] = int(record["price_krw"]) - target.target_price_krw
+    if baseline_price is not None:
+        listing["recent_trade_price_krw"] = baseline_price
+    if baseline_limit is not None:
+        listing["baseline_limit_krw"] = baseline_limit
+        listing["baseline_gap_krw"] = int(record["price_krw"]) - baseline_limit
+    return listing

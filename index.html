@@ -16,6 +16,69 @@
     </header>
 
     <main class="layout">
+      <section class="panel monitoring-panel" aria-labelledby="monitoringTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="monitoringTitle">단지별 감시 상태</h2>
+            <p class="section-copy">희망가, 최근 최저 호가, 실거래 기준선, 급매선을 한눈에 비교합니다.</p>
+          </div>
+          <span id="monitoringCount" class="muted">0건</span>
+        </div>
+        <div class="monitoring-table-wrap">
+          <table class="monitoring-table">
+            <thead>
+              <tr>
+                <th scope="col">단지</th>
+                <th scope="col">평형</th>
+                <th scope="col">희망가</th>
+                <th scope="col">최근 최저 호가</th>
+                <th scope="col">실거래 기준선</th>
+                <th scope="col">급매선</th>
+                <th scope="col">적용 기준</th>
+                <th scope="col">급매선까지</th>
+                <th scope="col">괴리율</th>
+                <th scope="col">상태</th>
+              </tr>
+            </thead>
+            <tbody id="monitoringSummaryBody">
+              <tr>
+                <td colspan="10">단지별 감시 상태를 불러오는 중입니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel readiness-panel" aria-labelledby="readinessTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="readinessTitle">데이터 품질/기준선 준비 상태</h2>
+            <p class="section-copy">단지별 최근 수집, 0건 연속 여부, 실거래 기준선, 품질 차단 상태를 분리해서 확인합니다.</p>
+          </div>
+          <span id="readinessCount" class="muted">0건</span>
+        </div>
+        <div class="readiness-table-wrap">
+          <table class="readiness-table">
+            <thead>
+              <tr>
+                <th scope="col">단지</th>
+                <th scope="col">최근 수집</th>
+                <th scope="col">수집 건수</th>
+                <th scope="col">0건 연속</th>
+                <th scope="col">실거래 기준선</th>
+                <th scope="col">품질 차단</th>
+                <th scope="col">수집 상태</th>
+              </tr>
+            </thead>
+            <tbody id="dataReadinessBody">
+              <tr>
+                <td colspan="7">데이터 준비 상태를 불러오는 중입니다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="panel status-panel" aria-labelledby="statusTitle">
         <div class="section-heading">
           <h2 id="statusTitle">마지막 실행</h2>
@@ -71,6 +134,49 @@
           <span id="runHistoryCount" class="muted">0건</span>
         </div>
         <div id="runHistoryList" class="run-history-list"></div>
+      </section>
+
+      <section class="panel diagnostics-panel" aria-labelledby="diagnosticsTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="diagnosticsTitle">단지별 수집 진단</h2>
+            <p class="section-copy">최근 실행에서 매물 source가 단지별로 응답한 결과입니다.</p>
+          </div>
+          <span id="diagnosticsCount" class="muted">0건</span>
+        </div>
+        <div id="collectionDiagnosticsList" class="diagnostics-list"></div>
+      </section>
+
+      <section class="panel decision-summary-panel" aria-labelledby="decisionSummaryTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="decisionSummaryTitle">탈락/보류 사유 요약</h2>
+            <p class="section-copy">최근 후보 데이터에서 가격 초과, 중복, 제외 조건, 품질 차단처럼 알림이 없었던 이유를 집계합니다.</p>
+          </div>
+          <span id="decisionSummaryCount" class="muted">0건</span>
+        </div>
+        <div class="decision-summary-grid">
+          <div class="summary-column">
+            <h3>전체 사유</h3>
+            <div id="decisionReasonSummary" class="reason-summary-list"></div>
+          </div>
+          <div class="summary-column">
+            <h3>단지별 요약</h3>
+            <div id="complexDecisionSummary" class="complex-summary-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel criteria-suggestions-panel" aria-labelledby="criteriaSuggestionsTitle">
+        <div class="section-heading">
+          <div>
+            <h2 id="criteriaSuggestionsTitle">기준 조정 제안</h2>
+            <p class="section-copy">반복 실행 결과에서 나온 검토용 제안입니다. 제안은 자동 적용되지 않으며 사람이 승인해야 합니다.</p>
+          </div>
+          <span id="criteriaSuggestionsCount" class="muted">대기</span>
+        </div>
+        <div id="criteriaSuggestionMetrics" class="suggestion-metrics"></div>
+        <div id="criteriaSuggestionsList" class="suggestion-list"></div>
       </section>
 
       <section class="panel feed-panel" aria-labelledby="feedTitle">

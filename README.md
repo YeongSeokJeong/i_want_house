@@ -243,6 +243,12 @@ Get-Content .codex\prompts\loop-review.md -Raw | codex exec --sandbox read-only 
 - GitHub Pages가 원하는 branch/path를 서빙하는지
 - Telegram secrets가 정확하고 `--send` 실행 시 실제 메시지가 도착하는지
 - 외부 매물/실거래 데이터 소스 접근 정책과 응답이 유효한지
+
+운영 절차 문서:
+
+- `docs/watchlist-operation-guide.md`: watchlist 단지 추가, 목표가/제외 키워드 수정, 호갱노노 해시 매핑 절차
+- `docs/operations-start-checklist.md`: GitHub Actions, Pages, Secrets, 첫 수집, Telegram 실전송 전 체크리스트
+
 ## 호갱노노 매물 수집 설정
 
 정기 실행에서 호갱노노 매매 매물을 수집하려면 GitHub repository variables에 다음 값을 넣습니다.

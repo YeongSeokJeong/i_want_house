@@ -1,6 +1,18 @@
 const COMPLEXES = [
-  { id: "baengnyeonsan-hillstate-3", name: "백련산힐스테이트3차", area: "78.87 m2" },
-  { id: "bulgwang-miseong", name: "불광 미성아파트", area: "86.47 m2" },
+  {
+    id: "baengnyeonsan-hillstate-3",
+    name: "백련산힐스테이트3차",
+    area: "78.87 m2",
+    targetPriceKrw: 850000000,
+    urgentDiscountRatio: 0.12,
+  },
+  {
+    id: "bulgwang-miseong",
+    name: "불광 미성아파트",
+    area: "86.47 m2",
+    targetPriceKrw: 850000000,
+    urgentDiscountRatio: 0.12,
+  },
 ];
 
 const currency = new Intl.NumberFormat("ko-KR");
@@ -8,6 +20,8 @@ const currency = new Intl.NumberFormat("ko-KR");
 document.addEventListener("DOMContentLoaded", () => {
   initComplexSelect();
   renderHealth();
+  renderDecisionSummary();
+  renderCriteriaSuggestions();
   renderSelectedComplex();
   document.getElementById("complexSelect").addEventListener("change", renderSelectedComplex);
 });
@@ -29,6 +43,9 @@ async function renderHealth() {
     const health = await fetchJson("data/state/health.json");
     const latest = health.latest || health.runs?.at?.(-1);
     renderRunHistory(health);
+    renderCollectionDiagnostics(latest);
+    await renderMonitoringSummary(latest);
+    await renderDataReadiness(latest);
     if (!latest) {
       setStatus("unknown", "상태 미확인", "실행 기록이 아직 없습니다.", "-");
       setMetrics({});
@@ -41,6 +58,9 @@ async function renderHealth() {
     setStatus("failed", "상태 오류", "상태 파일을 불러오지 못했습니다.", "-");
     setMetrics({});
     renderRunHistory(null, "수집/검색 이력을 불러오지 못했습니다.");
+    renderCollectionDiagnostics(null, "수집 진단을 불러오지 못했습니다.");
+    renderMonitoringSummary(null, "단지별 감시 상태를 불러오지 못했습니다.");
+    renderDataReadiness(null, "데이터 준비 상태를 불러오지 못했습니다.");
   }
 }
 
@@ -114,6 +134,335 @@ function metricPill(label, value) {
   return node;
 }
 
+async function renderMonitoringSummary(latest, errorMessage) {
+  const body = document.getElementById("monitoringSummaryBody");
+  const count = document.getElementById("monitoringCount");
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    body.replaceChildren(monitoringEmptyRow(errorMessage));
+    return;
+  }
+
+  try {
+    const histories = await Promise.all(
+      COMPLEXES.map(async (complex) => {
+        const payload = await fetchJson(`data/history/${complex.id}.json`);
+        return [complex.id, Array.isArray(payload.history) ? payload.history : []];
+      }),
+    );
+    const historyByComplex = Object.fromEntries(histories);
+    const diagnostics = diagnosticsByComplex(latest);
+    const rows = COMPLEXES.map((complex) =>
+      monitoringSummaryRow(complex, latestHistoryEntry(historyByComplex[complex.id] || []), diagnostics[complex.id]),
+    );
+
+    count.textContent = `${rows.length}건`;
+    body.replaceChildren(...rows);
+  } catch (error) {
+    count.textContent = "오류";
+    body.replaceChildren(monitoringEmptyRow("단지별 감시 상태를 불러오지 못했습니다."));
+  }
+}
+
+function monitoringSummaryRow(complex, latestHistory, diagnostic) {
+  const criteria = criteriaThresholds(complex, latestHistory);
+  const minPrice = positiveNumber(latestHistory?.min_price_krw);
+  const gapRatio = priceGapRatio(minPrice, criteria.urgentLine);
+  const remaining = remainingToUrgentLine(minPrice, criteria.urgentLine);
+  const status = monitoringStatus(latestHistory, diagnostic, minPrice, criteria.urgentLine);
+  const row = document.createElement("tr");
+
+  row.append(
+    tableCell(complex.name, "monitoring-complex"),
+    tableCell(complex.area),
+    tableCell(formatPrice(complex.targetPriceKrw)),
+    tableCell(formatPrice(minPrice)),
+    tableCell(formatPrice(positiveNumber(latestHistory?.recent_trade_price_krw))),
+    tableCell(formatPrice(criteria.urgentLine)),
+    tableCell(criteria.appliedCriterion),
+    tableCell(formatRemaining(remaining)),
+    tableCell(formatPercent(gapRatio)),
+    monitoringStatusCell(status),
+  );
+  return row;
+}
+
+function monitoringEmptyRow(message) {
+  const row = document.createElement("tr");
+  const cell = tableCell(message);
+  cell.colSpan = 10;
+  row.append(cell);
+  return row;
+}
+
+function tableCell(text, className) {
+  const cell = document.createElement("td");
+  if (className) {
+    cell.className = className;
+  }
+  cell.textContent = text;
+  return cell;
+}
+
+function monitoringStatusCell(status) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `monitoring-status monitoring-status-${status.kind}`;
+  badge.textContent = status.label;
+  cell.append(badge);
+  return cell;
+}
+
+function diagnosticsByComplex(latest) {
+  const targets = Array.isArray(latest?.listing_diagnostics?.targets) ? latest.listing_diagnostics.targets : [];
+  return Object.fromEntries(targets.map((target) => [target.complex_id, target]));
+}
+
+function latestHistoryEntry(history) {
+  return [...history].sort((a, b) => sortableTime(b.finished_at) - sortableTime(a.finished_at))[0] || null;
+}
+
+function urgentLinePrice(complex, latestHistory) {
+  return criteriaThresholds(complex, latestHistory).urgentLine;
+}
+
+function criteriaThresholds(complex, latestHistory) {
+  const targetLine = positiveNumber(complex.targetPriceKrw);
+  const tradeBaseline = positiveNumber(latestHistory?.recent_trade_price_krw);
+  const discountRatio = Number(complex.urgentDiscountRatio || 0);
+  if (!tradeBaseline) {
+    return {
+      targetLine,
+      tradeBaseline: null,
+      baselineDiscountLine: null,
+      urgentLine: targetLine,
+      appliedCriterion: "희망가 상한",
+    };
+  }
+  const baselineDiscountLine = Math.floor(tradeBaseline * (1 - discountRatio));
+  const urgentLine = targetLine ? Math.min(targetLine, baselineDiscountLine) : baselineDiscountLine;
+  return {
+    targetLine,
+    tradeBaseline,
+    baselineDiscountLine,
+    urgentLine,
+    appliedCriterion: urgentLine === baselineDiscountLine ? "실거래 할인선" : "희망가 상한",
+  };
+}
+
+function priceGapRatio(minPrice, urgentLine) {
+  if (!minPrice || !urgentLine) {
+    return null;
+  }
+  return ((minPrice - urgentLine) / urgentLine) * 100;
+}
+
+function remainingToUrgentLine(minPrice, urgentLine) {
+  if (!minPrice || !urgentLine) {
+    return null;
+  }
+  const amount = Math.max(minPrice - urgentLine, 0);
+  return {
+    amount,
+    ratio: (amount / urgentLine) * 100,
+    reached: minPrice <= urgentLine,
+  };
+}
+
+function monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine) {
+  if (diagnostic?.status === "empty_response" || Number(latestHistory?.listing_count || 0) === 0) {
+    return { kind: "empty", label: "매물 0건" };
+  }
+  if (!latestHistory) {
+    return { kind: "unknown", label: "이력 없음" };
+  }
+  if (!minPrice || !urgentLine) {
+    return { kind: "unknown", label: "기준 부족" };
+  }
+  const gap = priceGapRatio(minPrice, urgentLine);
+  if (gap <= 0) {
+    return { kind: "urgent", label: "급매권" };
+  }
+  if (gap <= 5) {
+    return { kind: "near", label: "근접" };
+  }
+  return { kind: "watch", label: "관망" };
+}
+
+async function renderDataReadiness(latest, errorMessage) {
+  const body = document.getElementById("dataReadinessBody");
+  const count = document.getElementById("readinessCount");
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    body.replaceChildren(readinessEmptyRow(errorMessage));
+    return;
+  }
+
+  try {
+    const histories = await Promise.all(
+      COMPLEXES.map(async (complex) => {
+        const payload = await fetchJson(`data/history/${complex.id}.json`).catch(() => ({ history: [] }));
+        return [complex.id, Array.isArray(payload.history) ? payload.history : []];
+      }),
+    );
+    const feed = await fetchJson("data/state/urgent-feed.json").catch(() => ({ items: [] }));
+    const feedItems = Array.isArray(feed.items) ? feed.items : [];
+    const historyByComplex = Object.fromEntries(histories);
+    const diagnostics = diagnosticsByComplex(latest);
+    const rows = COMPLEXES.map((complex) =>
+      dataReadinessRow(
+        complex,
+        historyByComplex[complex.id] || [],
+        diagnostics[complex.id],
+        feedItems.filter((item) => item.complex_id === complex.id),
+      ),
+    );
+
+    count.textContent = `${rows.length}건`;
+    body.replaceChildren(...rows);
+  } catch (error) {
+    count.textContent = "오류";
+    body.replaceChildren(readinessEmptyRow("데이터 준비 상태를 불러오지 못했습니다."));
+  }
+}
+
+function dataReadinessRow(complex, history, diagnostic, feedItems) {
+  const latest = latestHistoryEntry(history);
+  const listingCount = Number(latest?.listing_count);
+  const baselineReady = positiveNumber(latest?.recent_trade_price_krw);
+  const quality = qualityBlockStatus(feedItems);
+  const source = readinessSourceStatus(diagnostic, latest);
+  const row = document.createElement("tr");
+
+  row.append(
+    tableCell(complex.name, "monitoring-complex"),
+    tableCell(formatTime(latest?.finished_at || "-")),
+    tableCell(Number.isFinite(listingCount) ? `${currency.format(listingCount)}건` : "-"),
+    tableCell(`${consecutiveZeroListings(history)}회`),
+    readinessStatusCell(baselineReady ? "ready" : "missing", baselineReady ? "있음" : "없음"),
+    readinessStatusCell(quality.kind, quality.label),
+    readinessStatusCell(source.kind, source.label),
+  );
+  return row;
+}
+
+function readinessEmptyRow(message) {
+  const row = document.createElement("tr");
+  const cell = tableCell(message);
+  cell.colSpan = 7;
+  row.append(cell);
+  return row;
+}
+
+function readinessStatusCell(kind, label) {
+  const cell = document.createElement("td");
+  const badge = document.createElement("span");
+  badge.className = `readiness-status readiness-status-${kind}`;
+  badge.textContent = label;
+  cell.append(badge);
+  return cell;
+}
+
+function consecutiveZeroListings(history) {
+  const sorted = [...history].sort((a, b) => sortableTime(b.finished_at) - sortableTime(a.finished_at));
+  let count = 0;
+  for (const entry of sorted) {
+    if (Number(entry?.listing_count || 0) === 0) {
+      count += 1;
+    } else {
+      break;
+    }
+  }
+  return count;
+}
+
+function qualityBlockStatus(feedItems) {
+  if (feedItems.some((item) => String(item.reason || "").startsWith("average_price_jump"))) {
+    return { kind: "blocked", label: "품질 차단" };
+  }
+  if (feedItems.length === 0) {
+    return { kind: "unknown", label: "후보 없음" };
+  }
+  return { kind: "ready", label: "미차단" };
+}
+
+function readinessSourceStatus(diagnostic, latestHistory) {
+  if (diagnostic?.status === "listings_found") {
+    return { kind: "ready", label: "수집 정상" };
+  }
+  if (diagnostic?.status === "empty_response") {
+    return { kind: "warning", label: "0건 확인" };
+  }
+  if (!latestHistory) {
+    return { kind: "unknown", label: "이력 없음" };
+  }
+  if (Number(latestHistory.listing_count || 0) === 0) {
+    return { kind: "warning", label: "매물 0건" };
+  }
+  return { kind: "ready", label: "수집 기록" };
+}
+
+function renderCollectionDiagnostics(latest, errorMessage) {
+  const list = document.getElementById("collectionDiagnosticsList");
+  const count = document.getElementById("diagnosticsCount");
+  const targets = Array.isArray(latest?.listing_diagnostics?.targets) ? latest.listing_diagnostics.targets : [];
+
+  if (errorMessage) {
+    count.textContent = "오류";
+    list.replaceChildren(emptyNode(errorMessage));
+    return;
+  }
+
+  if (targets.length === 0) {
+    count.textContent = "0건";
+    list.replaceChildren(emptyNode("최근 실행에 단지별 수집 진단이 없습니다."));
+    return;
+  }
+
+  count.textContent = `${targets.length}건`;
+  list.replaceChildren(...targets.map(collectionDiagnosticItem));
+}
+
+function collectionDiagnosticItem(target) {
+  const node = document.createElement("article");
+  node.className = "diagnostic-item";
+
+  const complex = COMPLEXES.find((item) => item.id === target.complex_id);
+  const header = document.createElement("div");
+  header.className = "diagnostic-header";
+
+  const title = document.createElement("h3");
+  title.textContent = complex?.name || target.complex_id || "단지";
+
+  const status = document.createElement("span");
+  status.className = `diagnostic-status diagnostic-status-${target.status || "unknown"}`;
+  status.textContent = diagnosticStatusLabel(target.status);
+
+  header.append(title, status);
+
+  const meta = document.createElement("div");
+  meta.className = "diagnostic-meta";
+  meta.append(span(`매물 ${numberOrDash(target.listing_count)}건`));
+  if (target.source_kind) {
+    meta.append(span(target.source_kind));
+  }
+  if (target.source_id) {
+    meta.append(span(`source ${target.source_id}`));
+  }
+  if (target.trade_types) {
+    meta.append(span(`tradeTypes ${target.trade_types}`));
+  }
+
+  const note = document.createElement("p");
+  note.className = "diagnostic-note";
+  note.textContent = diagnosticNote(target);
+
+  node.append(header, meta, note);
+  return node;
+}
+
 function setStatus(status, label, reason, finishedAt) {
   const badge = document.getElementById("statusBadge");
   badge.className = `status-badge status-${status || "unknown"}`;
@@ -132,6 +481,245 @@ function setMetrics(counts) {
 async function renderSelectedComplex() {
   const complexId = document.getElementById("complexSelect").value || COMPLEXES[0].id;
   await Promise.all([renderHistory(complexId), renderFeed(complexId)]);
+}
+
+async function renderDecisionSummary() {
+  const reasonList = document.getElementById("decisionReasonSummary");
+  const complexList = document.getElementById("complexDecisionSummary");
+  const count = document.getElementById("decisionSummaryCount");
+
+  try {
+    const payload = await fetchJson("data/state/urgent-feed.json");
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    const summary = decisionSummary(items);
+    count.textContent = `${items.length}건`;
+
+    if (items.length === 0) {
+      reasonList.replaceChildren(emptyNode("최근 후보 사유가 아직 없습니다."));
+      complexList.replaceChildren(...COMPLEXES.map((complex) => complexDecisionItem(complex, null)));
+      return;
+    }
+
+    reasonList.replaceChildren(...summary.reasons.slice(0, 6).map(reasonSummaryItem));
+    complexList.replaceChildren(
+      ...COMPLEXES.map((complex) => complexDecisionItem(complex, summary.byComplex[complex.id] || null)),
+    );
+  } catch (error) {
+    count.textContent = "오류";
+    reasonList.replaceChildren(emptyNode("탈락/보류 사유를 불러오지 못했습니다."));
+    complexList.replaceChildren(emptyNode("단지별 후보 요약을 불러오지 못했습니다."));
+  }
+}
+
+async function renderCriteriaSuggestions() {
+  const list = document.getElementById("criteriaSuggestionsList");
+  const metrics = document.getElementById("criteriaSuggestionMetrics");
+  const count = document.getElementById("criteriaSuggestionsCount");
+
+  try {
+    const payload = await fetchOptionalJson("data/state/criteria-suggestions.json");
+    if (!payload) {
+      count.textContent = "대기";
+      metrics.replaceChildren();
+      list.replaceChildren(
+        emptyNode("기준 조정 제안은 아직 없습니다. 충분한 반복 실행 이력이 쌓이면 검토용 제안이 표시됩니다."),
+      );
+      return;
+    }
+
+    const suggestions = Array.isArray(payload.suggestions) ? payload.suggestions : [];
+    count.textContent = `${suggestions.length}건`;
+    metrics.replaceChildren(...criteriaSuggestionMetrics(payload));
+    if (suggestions.length === 0) {
+      list.replaceChildren(emptyNode("검토할 기준 조정 제안이 없습니다."));
+      return;
+    }
+    list.replaceChildren(...suggestions.map(criteriaSuggestionItem));
+  } catch (error) {
+    count.textContent = "오류";
+    metrics.replaceChildren();
+    list.replaceChildren(emptyNode("기준 조정 제안을 불러오지 못했습니다."));
+  }
+}
+
+function criteriaSuggestionMetrics(payload) {
+  const metrics = payload.metrics || {};
+  return [
+    suggestionMetric("상태", criteriaSuggestionStatusLabel(payload.status)),
+    suggestionMetric("판정 수", numberOrDash(payload.decision_count || metrics.total_decisions)),
+    suggestionMetric("오탐 신호", numberOrDash(metrics.false_positive_signals)),
+    suggestionMetric("오탐 비율", formatRatioPercent(metrics.false_positive_ratio)),
+    suggestionMetric("생성 시각", formatTime(payload.generated_at || "-")),
+    suggestionMetric("자동 적용", payload.auto_applied ? "예" : "아니오"),
+  ];
+}
+
+function suggestionMetric(label, value) {
+  const node = document.createElement("div");
+  const title = document.createElement("dt");
+  title.textContent = label;
+  const body = document.createElement("dd");
+  body.textContent = value || "-";
+  node.append(title, body);
+  return node;
+}
+
+function criteriaSuggestionItem(item) {
+  const node = document.createElement("article");
+  node.className = "suggestion-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = reasonLabel(item.reason);
+  const count = document.createElement("span");
+  count.textContent = `${numberOrDash(item.decision_count)}건`;
+  header.append(title, count);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  meta.append(
+    span(criteriaSuggestionSignalLabel(item.signal)),
+    span(item.requires_human_approval ? "사람 승인 필요" : "자동 승인 아님"),
+  );
+  if (item.reason) {
+    meta.append(span(item.reason));
+  }
+
+  const proposal = document.createElement("p");
+  proposal.className = "summary-note";
+  proposal.textContent = item.proposal || "검토 제안 내용이 없습니다.";
+
+  node.append(header, meta, proposal);
+  return node;
+}
+
+function decisionSummary(items) {
+  const reasonMap = new Map();
+  const byComplex = {};
+
+  items.forEach((item) => {
+    const decision = item.decision || "unknown";
+    const reason = item.reason || "unknown_reason";
+    const complexId = item.complex_id || "unknown";
+    const key = `${decision}:${reason}`;
+    const reasonEntry = reasonMap.get(key) || { decision, reason, count: 0 };
+    reasonEntry.count += 1;
+    reasonMap.set(key, reasonEntry);
+
+    const complexEntry =
+      byComplex[complexId] ||
+      {
+        total: 0,
+        alertPlanned: 0,
+        decisions: { approve: 0, hold: 0, reject: 0, unknown: 0 },
+        reasons: new Map(),
+      };
+    complexEntry.total += 1;
+    complexEntry.alertPlanned += item.alert_planned ? 1 : 0;
+    const decisionKey = ["approve", "hold", "reject"].includes(decision) ? decision : "unknown";
+    complexEntry.decisions[decisionKey] += 1;
+    const complexReason = complexEntry.reasons.get(key) || { decision, reason, count: 0 };
+    complexReason.count += 1;
+    complexEntry.reasons.set(key, complexReason);
+    byComplex[complexId] = complexEntry;
+  });
+
+  Object.values(byComplex).forEach((entry) => {
+    entry.reasons = [...entry.reasons.values()].sort(compareReasonEntries);
+  });
+
+  return {
+    reasons: [...reasonMap.values()].sort(compareReasonEntries),
+    byComplex,
+  };
+}
+
+function compareReasonEntries(a, b) {
+  return b.count - a.count || decisionLabel(a.decision).localeCompare(decisionLabel(b.decision), "ko-KR");
+}
+
+function reasonSummaryItem(item) {
+  const node = document.createElement("article");
+  node.className = "reason-summary-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = reasonLabel(item.reason);
+  const count = document.createElement("span");
+  count.textContent = `${item.count}건`;
+  header.append(title, count);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  meta.append(span(decisionLabel(item.decision)), span(item.reason));
+
+  node.append(header, meta);
+  return node;
+}
+
+function complexDecisionItem(complex, summary) {
+  const node = document.createElement("article");
+  node.className = "complex-summary-item";
+
+  const header = document.createElement("div");
+  header.className = "summary-row";
+  const title = document.createElement("strong");
+  title.textContent = complex.name;
+  const status = document.createElement("span");
+  status.textContent = complexSummaryStatus(summary);
+  header.append(title, status);
+
+  const meta = document.createElement("div");
+  meta.className = "summary-meta";
+  if (!summary) {
+    meta.append(span("최근 후보 데이터 없음"));
+  } else {
+    meta.append(
+      span(`승인 ${summary.decisions.approve}건`),
+      span(`보류 ${summary.decisions.hold}건`),
+      span(`탈락 ${summary.decisions.reject}건`),
+      span(`알림 ${summary.alertPlanned}건`),
+    );
+  }
+
+  const reason = document.createElement("p");
+  reason.className = "summary-note";
+  reason.textContent = complexSummaryReason(summary);
+
+  node.append(header, meta, reason);
+  return node;
+}
+
+function complexSummaryStatus(summary) {
+  if (!summary || summary.total === 0) {
+    return "후보 없음";
+  }
+  if (summary.alertPlanned > 0) {
+    return `알림 계획 ${summary.alertPlanned}건`;
+  }
+  if (summary.decisions.hold > 0 && summary.decisions.reject > 0) {
+    return "보류/탈락";
+  }
+  if (summary.decisions.hold > 0) {
+    return "보류";
+  }
+  if (summary.decisions.reject > 0) {
+    return "탈락";
+  }
+  return "알림 없음";
+}
+
+function complexSummaryReason(summary) {
+  if (!summary || summary.total === 0) {
+    return "최근 feed에 이 단지 후보가 없습니다.";
+  }
+  const topReasons = summary.reasons
+    .slice(0, 3)
+    .map((item) => `${reasonLabel(item.reason)} ${item.count}건`)
+    .join(" · ");
+  return topReasons || "집계할 사유가 없습니다.";
 }
 
 async function renderHistory(complexId) {
@@ -200,12 +788,23 @@ async function renderFeed(complexId) {
   const count = document.getElementById("feedCount");
 
   try {
-    const payload = await fetchJson("data/state/urgent-feed.json");
+    const [payload, historyPayload] = await Promise.all([
+      fetchJson("data/state/urgent-feed.json"),
+      fetchJson(`data/history/${complexId}.json`).catch(() => ({ history: [] })),
+    ]);
     const feedItems = Array.isArray(payload.items) ? payload.items : [];
+    const complex = COMPLEXES.find((item) => item.id === complexId);
+    const latestHistory = latestHistoryEntry(Array.isArray(historyPayload.history) ? historyPayload.history : []);
     const sorted = feedItems
       .filter((item) => item.complex_id === complexId)
       .filter((item) => Number(item.price_krw) > 0)
-      .sort((a, b) => Number(b.alert_planned) - Number(a.alert_planned) || Number(a.price_krw) - Number(b.price_krw))
+      .map((item) => ({ ...item, urgencyGrade: candidateUrgencyGrade(item, complex, latestHistory) }))
+      .sort(
+        (a, b) =>
+          Number(b.alert_planned) - Number(a.alert_planned) ||
+          a.urgencyGrade.rank - b.urgencyGrade.rank ||
+          Number(a.price_krw) - Number(b.price_krw),
+      )
       .slice(0, 10);
 
     const overflow = Number(payload.alert_cap_overflow || 0);
@@ -215,11 +814,57 @@ async function renderFeed(complexId) {
       return;
     }
 
-    list.replaceChildren(...sorted.map(feedItem));
+    const alertItems = sorted.filter((item) => item.alert_planned);
+    const observationItems = sorted.filter((item) => !item.alert_planned);
+    list.replaceChildren(
+      feedSection("알림 대상", alertItems, "이번 실행에서 알림 예정인 후보가 없습니다."),
+      feedSection("관찰 대상", observationItems, "급매 전 단계로 볼 후보가 없습니다."),
+    );
   } catch (error) {
     count.textContent = "오류";
     list.replaceChildren(emptyNode("후보 데이터를 불러오지 못했습니다."));
   }
+}
+
+function feedSection(title, items, emptyMessage) {
+  const section = document.createElement("section");
+  section.className = "feed-section";
+
+  const heading = document.createElement("h3");
+  heading.textContent = `${title} ${items.length}건`;
+  section.append(heading);
+
+  if (items.length === 0) {
+    section.append(emptyNode(emptyMessage));
+  } else {
+    const group = document.createElement("div");
+    group.className = "feed-section-list";
+    group.replaceChildren(...items.map(feedItem));
+    section.append(group);
+  }
+  return section;
+}
+
+function candidateUrgencyGrade(item, complex, latestHistory) {
+  if (!complex) {
+    return { kind: "unknown", label: "기준 부족", rank: 5, distance: null };
+  }
+  const price = positiveNumber(item.price_krw);
+  const urgentLine = criteriaThresholds(complex, latestHistory).urgentLine;
+  if (!price || !urgentLine) {
+    return { kind: "unknown", label: "기준 부족", rank: 5, distance: null };
+  }
+  const distance = ((price - urgentLine) / urgentLine) * 100;
+  if (distance <= 0) {
+    return { kind: "urgent", label: "급매", rank: 1, distance };
+  }
+  if (distance <= 5) {
+    return { kind: "near", label: "근접", rank: 2, distance };
+  }
+  if (distance <= 15) {
+    return { kind: "interest", label: "관심", rank: 3, distance };
+  }
+  return { kind: "far", label: "멀리 있음", rank: 4, distance };
 }
 
 function hasPriceData(history) {
@@ -301,8 +946,15 @@ function feedItem(item) {
   const node = document.createElement("article");
   node.className = "feed-item";
 
-  const title = document.createElement("h3");
+  const header = document.createElement("div");
+  header.className = "feed-item-header";
+  const title = document.createElement("h4");
   title.textContent = item.title || item.description || item.listing_id || "매물";
+  const grade = document.createElement("span");
+  const gradeKind = item.urgencyGrade?.kind || "unknown";
+  grade.className = `urgency-grade urgency-grade-${gradeKind}`;
+  grade.textContent = item.urgencyGrade?.label || "기준 부족";
+  header.append(title, grade);
 
   const meta = document.createElement("div");
   meta.className = "feed-meta";
@@ -320,8 +972,11 @@ function feedItem(item) {
   if (item.decision) {
     meta.append(span(item.decision));
   }
+  if (item.urgencyGrade) {
+    meta.append(span(formatGradeDistance(item.urgencyGrade)));
+  }
 
-  node.append(title, meta);
+  node.append(header, meta);
   if (item.link) {
     const link = document.createElement("a");
     link.className = "feed-link";
@@ -332,6 +987,16 @@ function feedItem(item) {
     node.append(link);
   }
   return node;
+}
+
+function formatGradeDistance(grade) {
+  if (!grade || !Number.isFinite(Number(grade.distance))) {
+    return "급매선 거리 -";
+  }
+  if (grade.distance <= 0) {
+    return `급매선 ${Math.abs(grade.distance).toFixed(1)}% 안쪽`;
+  }
+  return `급매선 +${grade.distance.toFixed(1)}%`;
 }
 
 function emptyNode(message) {
@@ -355,6 +1020,17 @@ async function fetchJson(path) {
   return response.json();
 }
 
+async function fetchOptionalJson(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`${path}: ${response.status}`);
+  }
+  return response.json();
+}
+
 function statusLabel(status) {
   if (status === "success") {
     return "정상";
@@ -368,13 +1044,128 @@ function statusLabel(status) {
   return "상태 미확인";
 }
 
+function diagnosticStatusLabel(status) {
+  if (status === "listings_found") {
+    return "매물 확인";
+  }
+  if (status === "empty_response") {
+    return "0건 확인";
+  }
+  return "미확인";
+}
+
+function diagnosticNote(target) {
+  if (target.diagnosis === "hogangnono_apt_items_empty") {
+    return "호갱노노 매매 API가 정상 응답했지만 매물이 0건입니다.";
+  }
+  if (target.status === "listings_found") {
+    return "매물 source 응답에서 매물이 확인되었습니다.";
+  }
+  if (target.diagnosis) {
+    return target.diagnosis;
+  }
+  return "수집 진단 세부 정보가 없습니다.";
+}
+
+function decisionLabel(value) {
+  if (value === "approve") {
+    return "승인";
+  }
+  if (value === "hold") {
+    return "보류";
+  }
+  if (value === "reject") {
+    return "탈락";
+  }
+  return "미확인";
+}
+
+function reasonLabel(reason) {
+  if (reason === "target_price") {
+    return "희망가 기준 통과";
+  }
+  if (reason === "baseline_price") {
+    return "실거래 할인선 통과";
+  }
+  if (reason === "above_target_price") {
+    return "가격 기준 초과";
+  }
+  if (reason === "already_notified_without_price_drop") {
+    return "기존 알림가 이상";
+  }
+  if (reason?.startsWith("excluded:")) {
+    return `제외 키워드: ${reason.slice("excluded:".length)}`;
+  }
+  if (reason?.startsWith("duplicate_listing:")) {
+    return "중복 매물 보류";
+  }
+  if (reason?.startsWith("average_price_jump")) {
+    return "평균가 급변 품질 차단";
+  }
+  if (reason?.startsWith("llm_")) {
+    return `LLM 검수: ${reason.slice("llm_".length)}`;
+  }
+  return reason || "사유 없음";
+}
+
+function criteriaSuggestionStatusLabel(status) {
+  if (status === "review_required") {
+    return "검토 필요";
+  }
+  if (status === "ready") {
+    return "준비됨";
+  }
+  return status || "대기";
+}
+
+function criteriaSuggestionSignalLabel(signal) {
+  if (signal === "false_positive") {
+    return "오탐 신호";
+  }
+  if (signal === "criteria_frequency") {
+    return "사유 빈도";
+  }
+  return signal || "신호 없음";
+}
+
 function numberOrDash(value) {
   return Number.isFinite(Number(value)) ? currency.format(Number(value)) : "-";
 }
 
+function positiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
 function formatPrice(value) {
   const number = Number(value);
-  return Number.isFinite(number) ? `${currency.format(number)}원` : "-";
+  return Number.isFinite(number) && number > 0 ? `${currency.format(number)}원` : "-";
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+  return `${number >= 0 ? "+" : ""}${number.toFixed(1)}%`;
+}
+
+function formatRatioPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return "-";
+  }
+  return `${(number * 100).toFixed(1)}%`;
+}
+
+function formatRemaining(value) {
+  if (!value) {
+    return "-";
+  }
+  if (value.reached) {
+    return "도달/초과";
+  }
+  return `${formatPrice(value.amount)} (${value.ratio.toFixed(1)}%)`;
 }
 
 function formatTime(value) {

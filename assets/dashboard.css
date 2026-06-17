@@ -76,10 +76,23 @@ h2 {
 }
 
 .status-panel,
+.monitoring-panel,
+.readiness-panel,
 .chart-panel,
 .history-panel,
+.diagnostics-panel,
+.decision-summary-panel,
+.criteria-suggestions-panel,
 .feed-panel {
   padding: 18px;
+}
+
+.monitoring-panel {
+  grid-column: 1 / -1;
+}
+
+.readiness-panel {
+  grid-column: 1 / -1;
 }
 
 .chart-panel {
@@ -155,6 +168,116 @@ h2 {
   border-radius: 8px;
   padding: 12px;
   background: #fbfcfb;
+}
+
+.monitoring-table-wrap,
+.readiness-table-wrap {
+  overflow-x: auto;
+}
+
+.monitoring-table,
+.readiness-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.monitoring-table {
+  min-width: 1120px;
+}
+
+.readiness-table {
+  min-width: 860px;
+}
+
+.monitoring-table th,
+.monitoring-table td,
+.readiness-table th,
+.readiness-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 8px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.monitoring-table th,
+.readiness-table th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-table tbody tr:last-child td,
+.readiness-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.monitoring-complex {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.monitoring-status {
+  display: inline-block;
+  min-width: 68px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.monitoring-status-urgent {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.monitoring-status-near {
+  background: #e7edff;
+  color: #3147a6;
+}
+
+.monitoring-status-watch {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.monitoring-status-empty,
+.monitoring-status-unknown {
+  background: #eceff3;
+  color: var(--muted);
+}
+
+.readiness-status {
+  display: inline-block;
+  min-width: 72px;
+  border-radius: 999px;
+  padding: 5px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.readiness-status-ready {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.readiness-status-warning,
+.readiness-status-missing {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.readiness-status-blocked {
+  background: #fae2e1;
+  color: var(--error);
+}
+
+.readiness-status-unknown {
+  background: #eceff3;
+  color: var(--muted);
 }
 
 dt {
@@ -248,9 +371,68 @@ canvas {
   text-align: center;
 }
 
-.feed-list {
+.feed-list,
+.feed-section-list {
   display: grid;
   gap: 10px;
+}
+
+.feed-section {
+  display: grid;
+  gap: 10px;
+}
+
+.feed-section + .feed-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.feed-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.diagnostics-list {
+  display: grid;
+  gap: 10px;
+}
+
+.decision-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+}
+
+.summary-column h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.reason-summary-list,
+.complex-summary-list,
+.suggestion-list {
+  display: grid;
+  gap: 8px;
+}
+
+.suggestion-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.suggestion-metrics div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfb;
+}
+
+.suggestion-metrics dd {
+  font-size: 16px;
 }
 
 .run-history-list {
@@ -259,6 +441,10 @@ canvas {
 }
 
 .run-history-item,
+.diagnostic-item,
+.reason-summary-item,
+.complex-summary-item,
+.suggestion-item,
 .feed-item {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -266,7 +452,8 @@ canvas {
   background: #fbfcfb;
 }
 
-.run-history-header {
+.run-history-header,
+.diagnostic-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -305,8 +492,32 @@ canvas {
   color: var(--warn);
 }
 
+.diagnostic-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.diagnostic-status-listings_found {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.diagnostic-status-empty_response {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.diagnostic-status-unknown {
+  background: #eceff3;
+  color: var(--muted);
+}
+
 .run-history-meta,
-.run-history-metrics {
+.run-history-metrics,
+.diagnostic-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -325,9 +536,105 @@ canvas {
   background: #ffffff;
 }
 
-.feed-item h3 {
-  margin: 0 0 7px;
+.diagnostic-item h3 {
+  margin: 0;
   font-size: 15px;
+}
+
+.diagnostic-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #ffffff;
+}
+
+.diagnostic-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.summary-row span {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+
+.summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summary-meta span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.summary-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.feed-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.feed-item h4 {
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+}
+
+.urgency-grade {
+  flex: 0 0 auto;
+  min-width: 64px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.urgency-grade-urgent {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.urgency-grade-near {
+  background: #e7edff;
+  color: #3147a6;
+}
+
+.urgency-grade-interest {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.urgency-grade-far,
+.urgency-grade-unknown {
+  background: #eceff3;
+  color: var(--muted);
 }
 
 .feed-meta {
@@ -362,6 +669,14 @@ canvas {
 
   .chart-panel {
     grid-row: auto;
+  }
+
+  .decision-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .suggestion-metrics {
+    grid-template-columns: 1fr;
   }
 }
 

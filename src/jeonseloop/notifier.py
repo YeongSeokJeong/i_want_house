@@ -66,14 +66,52 @@ class NotificationService:
 def format_candidate_message(candidate: Candidate) -> str:
     listing = candidate.listing
     title = listing.get("title") or listing.get("description") or candidate.listing_key
-    return (
-        "[JeonseLoop]\n"
-        f"complex_id: {candidate.complex_id}\n"
-        f"price_krw: {candidate.price_krw}\n"
-        f"reason: {candidate.reason}\n"
-        f"title: {title}\n"
-        f"link: {listing.get('link', '')}"
-    )
+    lines = [
+        "[JeonseLoop 급매 후보]",
+        f"단지: {listing.get('watch_name') or title} ({candidate.complex_id})",
+        f"매물: {title}",
+        f"호가: {_format_krw(candidate.price_krw)}",
+        f"목표가: {_format_krw(listing.get('target_price_krw'))} ({_format_gap(listing.get('target_gap_krw'), '목표가')})",
+        f"판정: {candidate.reason}",
+    ]
+    if listing.get("recent_trade_price_krw"):
+        lines.append(f"최근 실거래 기준: {_format_krw(listing.get('recent_trade_price_krw'))}")
+    if listing.get("baseline_limit_krw"):
+        discount = _format_discount(listing.get("urgent_discount_ratio"))
+        lines.append(f"할인 급매선: {_format_krw(listing.get('baseline_limit_krw'))} ({discount})")
+        lines.append(f"급매선 차이: {_format_gap(listing.get('baseline_gap_krw'), '급매선')}")
+    if listing.get("area_m2") or listing.get("floor"):
+        lines.append(f"면적/층: {listing.get('area_m2', '-')} m2 / {listing.get('floor', '-')}층")
+    lines.append(f"link: {listing.get('link', '')}")
+    lines.append(f"complex_id: {candidate.complex_id}")
+    return "\n".join(lines)
+
+
+def _format_krw(value: object) -> str:
+    try:
+        number = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return "-"
+    return f"{number:,}원"
+
+
+def _format_gap(value: object, label: str) -> str:
+    try:
+        amount = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return f"{label} 차이 -"
+    if amount == 0:
+        return f"{label}과 동일"
+    direction = "낮음" if amount < 0 else "높음"
+    return f"{label}보다 {_format_krw(abs(amount))} {direction}"
+
+
+def _format_discount(value: object) -> str:
+    try:
+        ratio = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return "할인율 -"
+    return f"실거래 대비 {ratio * 100:.1f}% 할인"
 
 
 def send_candidates(

@@ -103,13 +103,33 @@ class LoopTests(unittest.TestCase):
                 price_krw=830000000,
                 decision="approve",
                 reason="target_price",
-                listing={"title": "Sample", "link": "https://example.invalid/listing-1"},
+                listing={
+                    "title": "Sample",
+                    "watch_name": "Sample Apartment",
+                    "target_price_krw": 840000000,
+                    "target_gap_krw": -10000000,
+                    "recent_trade_price_krw": 925000000,
+                    "baseline_limit_krw": 832500000,
+                    "baseline_gap_krw": -2500000,
+                    "urgent_discount_ratio": 0.1,
+                    "area_m2": 84.9,
+                    "floor": 9,
+                    "link": "https://example.invalid/listing-1",
+                },
             )
         )
 
+        self.assertIn("[JeonseLoop 급매 후보]", message)
+        self.assertIn("단지: Sample Apartment (sample-apt)", message)
+        self.assertIn("매물: Sample", message)
+        self.assertIn("호가: 830,000,000원", message)
+        self.assertIn("목표가보다 10,000,000원 낮음", message)
+        self.assertIn("최근 실거래 기준: 925,000,000원", message)
+        self.assertIn("할인 급매선: 832,500,000원", message)
+        self.assertIn("급매선보다 2,500,000원 낮음", message)
+        self.assertIn("판정: target_price", message)
+        self.assertIn("면적/층: 84.9 m2 / 9층", message)
         self.assertIn("complex_id: sample-apt", message)
-        self.assertIn("price_krw: 830000000", message)
-        self.assertIn("reason: target_price", message)
         self.assertIn("https://example.invalid/listing-1", message)
 
 
