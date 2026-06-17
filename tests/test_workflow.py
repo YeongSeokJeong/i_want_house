@@ -6,6 +6,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "jeonseloop.yml"
 RECOVERY_WORKFLOW = ROOT / ".github" / "workflows" / "collector-recovery.yml"
+TELEGRAM_INTAKE_WORKFLOW = ROOT / ".github" / "workflows" / "telegram-backlog-intake.yml"
 
 
 class WorkflowTests(unittest.TestCase):
@@ -91,6 +92,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("name: collector-diagnostics", text)
         self.assertIn("collector-recovery-report.md", text)
         self.assertNotIn("git push", text)
+
+    def test_telegram_backlog_intake_workflow_is_read_only_toward_telegram(self) -> None:
+        text = TELEGRAM_INTAKE_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn('cron: "0 * * * *"', text)
+        self.assertIn("python -m jeonseloop.telegram_backlog_intake $args", text)
+        self.assertIn("--fetch-updates", text)
+        self.assertIn("--updates-path $RUNNER_TEMP/telegram-updates.json", text)
+        self.assertNotIn("--send", text)
+        self.assertNotIn("sendMessage", text)
+        self.assertNotIn("--chat-id $TELEGRAM_CHAT_ID", text)
+        self.assertIn("git add docs/backlog.md data/state/telegram-intake.json", text)
+        self.assertNotIn("git add docs/backlog.md data/state/telegram-intake.json data/state/telegram-updates.json", text)
 
 
 if __name__ == "__main__":

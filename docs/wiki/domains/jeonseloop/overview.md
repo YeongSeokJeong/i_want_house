@@ -1,4 +1,10 @@
-# JeonseLoop 개요
+﻿# JeonseLoop 개요
+
+## Telegram 백로그 intake
+- `telegram_getUpdates` 기반 intake는 Telegram 메시지를 보내지 않고, 읽어 온 update를 백로그 후보로만 해석한다.
+- 이미 처리한 `update_id`는 `data/state/telegram-intake.json`에 기록해 재실행 시 같은 요청을 다시 `docs/backlog.md`에 추가하지 않는다.
+- 충분히 구체적인 요청은 `docs/backlog.md`에 `Todo` 행으로 추가하고, 대상이나 완료 기준이 부족한 요청은 `clarification_needed` 초안으로 상태 파일에 남긴다.
+- `.github/workflows/telegram-backlog-intake.yml`은 raw Telegram update 파일을 커밋하지 않고, 감사 가능한 intake 결과 상태와 백로그 변경만 커밋 대상으로 삼는다.
 
 ## 목적
 JeonseLoop는 관심 아파트 단지의 매매/전세 매물, 실거래 기준선, 후보 판정, 알림 상태를 Git 저장소의 JSON/Markdown 상태로 남기는 개인용 무인 감시 루프다.

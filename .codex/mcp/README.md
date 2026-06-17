@@ -1,5 +1,16 @@
 # Telegram Bot MCP Tool
 
+## 백로그 intake
+저장된 update 파일은 다음 명령으로 백로그 후보로 분석할 수 있다. 이 명령은 Telegram 메시지를 보내지 않고 `docs/backlog.md`와 `data/state/telegram-intake.json`만 갱신한다.
+
+```powershell
+$env:PYTHONPATH="src"
+python -m jeonseloop.telegram_backlog_intake --updates-path data/state/telegram-updates.json
+```
+
+운영 자동화는 `.github/workflows/telegram-backlog-intake.yml`에서 매시간 `getUpdates`를 읽고, 이미 처리한 `update_id`는 다시 백로그에 추가하지 않는다. 요청이 충분히 구체적이지 않으면 백로그 행 대신 `clarification_needed` 초안을 상태 파일에 남긴다.
+MCP에서는 `telegram_triage_saved_updates` 도구로 같은 saved update triage를 실행할 수 있다.
+
 이 repo-local MCP 서버는 Telegram Bot API 점검용 도구를 제공한다. 실제 토큰과 chat ID는 환경 변수 또는 로컬 `.env`에서만 읽고 저장소에 기록하지 않는다.
 
 ## 실행 명령

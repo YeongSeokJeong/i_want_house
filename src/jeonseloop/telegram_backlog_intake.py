@@ -1,0 +1,446 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass
+from datetime import UTC, datetime
+import json
+import os
+from pathlib import Path
+import re
+import sys
+from typing import Any
+from urllib import parse, request
+
+from .persistence import JsonStateStore, sanitize_diagnostics
+
+
+DEFAULT_UPDATES_PATH = Path("data/state/telegram-updates.json")
+DEFAULT_STATE_PATH = Path("data/state/telegram-intake.json")
+DEFAULT_BACKLOG_PATH = Path("docs/backlog.md")
+
+
+@dataclass(frozen=True)
+class IntakeOptions:
+    updates_path: Path = DEFAULT_UPDATES_PATH
+    state_path: Path = DEFAULT_STATE_PATH
+    backlog_path: Path = DEFAULT_BACKLOG_PATH
+    today: str | None = None
+    chat_id: str | None = None
+    fetch_updates: bool = False
+    limit: int = 20
+    poll_timeout: int = 0
+    timeout_seconds: int = 15
+    env_file: Path | None = Path(".env")
+    dry_run: bool = False
+
+
+def run_intake(options: IntakeOptions) -> dict[str, Any]:
+    store = JsonStateStore()
+    state = _load_state(store, options.state_path)
+    updates_payload: dict[str, Any] | None = None
+    if options.fetch_updates:
+        updates_payload = _fetch_updates(options, state)
+        if updates_payload.get("status") == "skipped":
+            return updates_payload
+        if not options.dry_run:
+            store.atomic_write_json(options.updates_path, updates_payload)
+    updates = _extract_updates(updates_payload if updates_payload is not None else store.load_json(options.updates_path, {"updates": []}))
+    processed_ids = {int(value) for value in state.get("processed_update_ids", [])}
+    today = options.today or datetime.now(tz=UTC).date().isoformat()
+
+    accepted: list[dict[str, Any]] = []
+    clarification_needed: list[dict[str, Any]] = []
+    skipped = 0
+    next_id = _next_backlog_id(options.backlog_path, today)
+    backlog_rows: list[str] = []
+
+    for update in updates:
+        update_id = _update_id(update)
+        if update_id is None or update_id in processed_ids:
+            skipped += 1
+            continue
+        message = _message_from_update(update, options.chat_id)
+        if message is None:
+            processed_ids.add(update_id)
+            skipped += 1
+            continue
+        triage = triage_message(message["text"])
+        if triage["status"] == "accepted":
+            backlog_id = f"BL-{today.replace('-', '')}-{next_id:03d}"
+            next_id += 1
+            row = _backlog_row(backlog_id, triage, message, update_id, today)
+            backlog_rows.append(row)
+            accepted.append(
+                {
+                    "update_id": update_id,
+                    "message_id": message.get("message_id"),
+                    "backlog_id": backlog_id,
+                    "route": triage["route"],
+                    "task": triage["task"],
+                    "excerpt": triage["excerpt"],
+                }
+            )
+        else:
+            clarification_needed.append(
+                {
+                    "update_id": update_id,
+                    "message_id": message.get("message_id"),
+                    "status": "clarification_needed",
+                    "reason": triage["reason"],
+                    "excerpt": triage["excerpt"],
+                    "draft_question": triage["draft_question"],
+                }
+            )
+        processed_ids.add(update_id)
+
+    result_state = {
+        "generated_at": _now(),
+        "processed_update_ids": sorted(processed_ids),
+        "last_update_id": max(processed_ids) if processed_ids else None,
+        "accepted": _merge_by_update_id(state.get("accepted", []), accepted),
+        "clarification_needed": _merge_by_update_id(state.get("clarification_needed", []), clarification_needed),
+    }
+    result = {
+        "status": "success",
+        "updates_seen": len(updates),
+        "accepted_count": len(accepted),
+        "clarification_needed_count": len(clarification_needed),
+        "skipped_count": skipped,
+        "accepted": accepted,
+        "clarification_needed": clarification_needed,
+    }
+
+    if not options.dry_run:
+        if backlog_rows:
+            _append_backlog_rows(options.backlog_path, backlog_rows)
+        store.atomic_write_json(options.state_path, result_state)
+    else:
+        result["dry_run"] = True
+    return result
+
+
+def triage_message(text: str) -> dict[str, Any]:
+    excerpt = _sanitize_text(text)
+    normalized = excerpt.lower()
+    action_tokens = (
+        "해줘",
+        "추가",
+        "수정",
+        "개선",
+        "구현",
+        "만들",
+        "작성",
+        "정리",
+        "확인",
+        "분석",
+        "보여",
+        "전환",
+        "변경",
+        "자동",
+        "연동",
+        "검증",
+        "필요",
+        "싶",
+        "add",
+        "implement",
+        "fix",
+        "create",
+        "update",
+        "show",
+        "check",
+        "analyze",
+    )
+    object_tokens = (
+        "백로그",
+        "대시보드",
+        "텔레그램",
+        "telegram",
+        "호갱노노",
+        "네이버",
+        "매물",
+        "단지",
+        "알림",
+        "workflow",
+        "actions",
+        "config",
+        "watchlist",
+        "수집",
+        "기준",
+        "문서",
+        "테스트",
+        "mcp",
+        "agent",
+        "github",
+    )
+    has_action = any(token in normalized for token in action_tokens)
+    has_object = any(token in normalized for token in object_tokens)
+    has_enough_detail = len(re.sub(r"\s+", "", excerpt)) >= 12
+    if has_action and has_object and has_enough_detail:
+        route = _classify_route(normalized)
+        return {
+            "status": "accepted",
+            "route": route,
+            "task": _task_from_excerpt(excerpt),
+            "context": f"Telegram request intake: {_truncate(excerpt, 180)}",
+            "artifact": _artifact_for_route(route),
+            "excerpt": excerpt,
+        }
+    return {
+        "status": "clarification_needed",
+        "reason": "insufficient_action_or_target",
+        "excerpt": excerpt,
+        "draft_question": "요청하려는 대상, 원하는 변경, 완료 기준을 한 문장으로 더 구체화해 주세요.",
+    }
+
+
+def fetch_telegram_updates(
+    *,
+    token: str,
+    offset: int | None,
+    limit: int,
+    poll_timeout: int,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"limit": limit, "timeout": poll_timeout}
+    if offset is not None:
+        params["offset"] = offset
+    body = parse.urlencode(params).encode("utf-8")
+    req = request.Request(f"https://api.telegram.org/bot{token}/getUpdates", data=body, method="POST")
+    with request.urlopen(req, timeout=timeout_seconds) as response:  # pragma: no cover - live network path
+        payload = json.loads(response.read().decode("utf-8"))
+    return {
+        "generated_at": _now(),
+        "source": "telegram_getUpdates",
+        "updates": payload.get("result", []) if isinstance(payload, dict) else [],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Triage saved Telegram updates into JeonseLoop backlog items.")
+    parser.add_argument("--updates-path", default=str(DEFAULT_UPDATES_PATH))
+    parser.add_argument("--state-path", default=str(DEFAULT_STATE_PATH))
+    parser.add_argument("--backlog-path", default=str(DEFAULT_BACKLOG_PATH))
+    parser.add_argument("--today", help="override BL-* date for deterministic tests")
+    parser.add_argument("--chat-id", help="only process messages from this Telegram chat id")
+    parser.add_argument("--fetch-updates", action="store_true", help="read getUpdates before triage; never sends messages")
+    parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument("--poll-timeout", type=int, default=0)
+    parser.add_argument("--timeout-seconds", type=int, default=15)
+    parser.add_argument("--env-file", default=".env")
+    parser.add_argument("--dry-run", action="store_true", help="print result without writing backlog or intake state")
+    args = parser.parse_args(argv)
+    env = _env_with_file(Path(args.env_file) if args.env_file else None)
+    options = IntakeOptions(
+        updates_path=Path(args.updates_path),
+        state_path=Path(args.state_path),
+        backlog_path=Path(args.backlog_path),
+        today=args.today,
+        chat_id=args.chat_id or env.get("TELEGRAM_CHAT_ID"),
+        fetch_updates=args.fetch_updates,
+        limit=args.limit,
+        poll_timeout=args.poll_timeout,
+        timeout_seconds=args.timeout_seconds,
+        env_file=Path(args.env_file) if args.env_file else None,
+        dry_run=args.dry_run,
+    )
+    result = run_intake(options)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if result["status"] in {"success", "skipped"} else 1
+
+
+def _fetch_updates(options: IntakeOptions, state: dict[str, Any]) -> dict[str, Any]:
+    env = _env_with_file(options.env_file)
+    token = env.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not token:
+        return {"status": "skipped", "reason": "TELEGRAM_BOT_TOKEN is not configured"}
+    last_update_id = state.get("last_update_id")
+    offset = int(last_update_id) + 1 if last_update_id is not None else None
+    return fetch_telegram_updates(
+        token=token,
+        offset=offset,
+        limit=options.limit,
+        poll_timeout=options.poll_timeout,
+        timeout_seconds=options.timeout_seconds,
+    )
+
+
+def _load_state(store: JsonStateStore, path: Path) -> dict[str, Any]:
+    state = store.load_json(path, {"processed_update_ids": [], "accepted": [], "clarification_needed": []})
+    if not isinstance(state, dict):
+        return {"processed_update_ids": [], "accepted": [], "clarification_needed": []}
+    state.setdefault("processed_update_ids", [])
+    state.setdefault("accepted", [])
+    state.setdefault("clarification_needed", [])
+    return state
+
+
+def _extract_updates(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, dict) and isinstance(payload.get("updates"), list):
+        return [item for item in payload["updates"] if isinstance(item, dict)]
+    if isinstance(payload, dict) and isinstance(payload.get("result"), list):
+        return [item for item in payload["result"] if isinstance(item, dict)]
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    return []
+
+
+def _update_id(update: dict[str, Any]) -> int | None:
+    try:
+        return int(update.get("update_id"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _message_from_update(update: dict[str, Any], chat_id: str | None) -> dict[str, Any] | None:
+    for key in ("message", "edited_message", "channel_post"):
+        raw = update.get(key)
+        if not isinstance(raw, dict):
+            continue
+        text = raw.get("text")
+        if not isinstance(text, str) or not text.strip():
+            return None
+        chat = raw.get("chat") if isinstance(raw.get("chat"), dict) else {}
+        if chat_id and str(chat.get("id")) != str(chat_id):
+            return None
+        return {"text": text, "message_id": raw.get("message_id")}
+    return None
+
+
+def _classify_route(normalized: str) -> str:
+    if any(token in normalized for token in ("wiki", "위키")):
+        return "wiki-domain"
+    if any(token in normalized for token in ("readme", "문서", "가이드", "체크리스트")):
+        return "operator-doc"
+    if any(token in normalized for token in ("mcp", "agent", "skill", "에이전트", "스킬")):
+        return "skill-agent"
+    if "backlog" in normalized or "백로그" in normalized:
+        return "backlog"
+    return "source-code"
+
+
+def _artifact_for_route(route: str) -> str:
+    return {
+        "source-code": "`src/`, `tests/`, `docs/orchestration/`",
+        "wiki-domain": "`docs/wiki/`",
+        "wiki-decision": "`docs/wiki/decisions/`",
+        "wiki-rule": "`docs/wiki/rules/common/`",
+        "wiki-workflow": "`docs/wiki/rules/workflow/`",
+        "operator-doc": "`docs/`",
+        "skill-agent": "`.codex/`",
+        "spec": "`docs/`",
+        "backlog": "`docs/backlog.md`",
+    }.get(route, "`docs/`")
+
+
+def _task_from_excerpt(excerpt: str) -> str:
+    compact = _truncate(excerpt, 90)
+    return f"Telegram 요청 처리: {compact}"
+
+
+def _backlog_row(backlog_id: str, triage: dict[str, Any], message: dict[str, Any], update_id: int, today: str) -> str:
+    context = f"Telegram update_id={update_id} 자동 수집. 원문 요약: {triage['excerpt']}"
+    return (
+        f"| {backlog_id} | Todo | {triage['route']} | {_cell(triage['task'])} | {_cell(context)} | "
+        f"{today} | - | {triage['artifact']} | - |"
+    )
+
+
+def _append_backlog_rows(path: Path, rows: list[str]) -> None:
+    if not rows:
+        return
+    text = path.read_text(encoding="utf-8") if path.exists() else _empty_backlog_text()
+    lines = text.splitlines()
+    if not any(line.startswith("| ID | Status | Route |") for line in lines):
+        raise ValueError("backlog table header was not found")
+    insert_at = _find_insert_index(lines)
+    updated = lines[:insert_at] + rows + lines[insert_at:]
+    new_text = "\n".join(updated).rstrip() + "\n"
+    _validate_backlog_text(new_text)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(f".{path.name}.tmp")
+    temp.write_text(new_text, encoding="utf-8")
+    os.replace(temp, path)
+
+
+def _find_insert_index(lines: list[str]) -> int:
+    for index, line in enumerate(lines):
+        if line.startswith("| BL-"):
+            return index
+    return len(lines)
+
+
+def _validate_backlog_text(text: str) -> None:
+    ids = re.findall(r"\|\s*(BL-\d{8}-\d{3})\s*\|", text)
+    if len(ids) != len(set(ids)):
+        raise ValueError("duplicate backlog IDs detected")
+
+
+def _next_backlog_id(path: Path, today: str) -> int:
+    if not path.exists():
+        return 1
+    prefix = f"BL-{today.replace('-', '')}-"
+    max_seen = 0
+    for match in re.finditer(r"BL-\d{8}-(\d{3})", path.read_text(encoding="utf-8")):
+        full = match.group(0)
+        if full.startswith(prefix):
+            max_seen = max(max_seen, int(match.group(1)))
+    return max_seen + 1
+
+
+def _merge_by_update_id(existing: Any, new_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[int, dict[str, Any]] = {}
+    if isinstance(existing, list):
+        for item in existing:
+            if not isinstance(item, dict) or "update_id" not in item:
+                continue
+            try:
+                merged[int(item["update_id"])] = item
+            except (TypeError, ValueError):
+                continue
+    for item in new_items:
+        merged[int(item["update_id"])] = item
+    return [merged[key] for key in sorted(merged)]
+
+
+def _sanitize_text(text: str) -> str:
+    sanitized = sanitize_diagnostics({"message": text}).get("message", "")
+    sanitized = " ".join(str(sanitized).split())
+    return _truncate(sanitized, 300)
+
+
+def _cell(value: str) -> str:
+    return value.replace("|", "\\|").replace("\n", " ").strip()
+
+
+def _truncate(text: str, max_length: int) -> str:
+    return text if len(text) <= max_length else text[: max_length - 1].rstrip() + "..."
+
+
+def _empty_backlog_text() -> str:
+    return (
+        "# Backlog\n\n"
+        "> Last updated: 2026-06-17\n\n"
+        "## Items\n"
+        "| ID | Status | Route | Task | Context | Created | Completed | Artifact | Result |\n"
+        "|---|---|---|---|---|---|---|---|---|\n"
+    )
+
+
+def _env_with_file(env_file: Path | None) -> dict[str, str]:
+    env = dict(os.environ)
+    if env_file and env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            env.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    return env
+
+
+def _now() -> str:
+    return datetime.now(tz=UTC).replace(microsecond=0).isoformat()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
