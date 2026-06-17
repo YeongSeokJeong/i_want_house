@@ -24,6 +24,8 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("최근 최저 호가", html)
         self.assertIn("실거래 기준선", html)
         self.assertIn("급매선", html)
+        self.assertIn("적용 기준", html)
+        self.assertIn("급매선까지", html)
         self.assertIn("괴리율", html)
         self.assertIn("최근 수집/검색 이력", html)
         self.assertIn("runHistoryList", html)
@@ -40,6 +42,9 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn('fetchJson("data/state/urgent-feed.json")', script)
         self.assertIn("data/history/${complexId}.json", script)
         self.assertIn("renderMonitoringSummary", script)
+        self.assertIn("criteriaThresholds", script)
+        self.assertIn("remainingToUrgentLine", script)
+        self.assertIn("formatRemaining", script)
         self.assertIn("urgentLinePrice", script)
         self.assertIn("priceGapRatio", script)
         self.assertIn("monitoringStatus", script)
@@ -60,6 +65,9 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("호갱노노 매매 API가 정상 응답했지만 매물이 0건입니다.", script)
         self.assertIn("단지별 감시 상태를 불러오지 못했습니다.", script)
         self.assertIn("매물 0건", script)
+        self.assertIn("희망가 상한", script)
+        self.assertIn("실거래 할인선", script)
+        self.assertIn("도달/초과", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")
@@ -93,7 +101,7 @@ class DashboardStaticTests(unittest.TestCase):
 
         self.assertIn("targetPriceKrw: 850000000", script)
         self.assertIn("urgentDiscountRatio: 0.12", script)
-        self.assertIn("Math.min(targetLine, baselineLine)", script)
+        self.assertIn("Math.min(targetLine, baselineDiscountLine)", script)
 
 
 if __name__ == "__main__":

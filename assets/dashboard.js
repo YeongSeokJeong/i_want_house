@@ -162,10 +162,11 @@ async function renderMonitoringSummary(latest, errorMessage) {
 }
 
 function monitoringSummaryRow(complex, latestHistory, diagnostic) {
-  const urgentLine = urgentLinePrice(complex, latestHistory);
+  const criteria = criteriaThresholds(complex, latestHistory);
   const minPrice = positiveNumber(latestHistory?.min_price_krw);
-  const gapRatio = priceGapRatio(minPrice, urgentLine);
-  const status = monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine);
+  const gapRatio = priceGapRatio(minPrice, criteria.urgentLine);
+  const remaining = remainingToUrgentLine(minPrice, criteria.urgentLine);
+  const status = monitoringStatus(latestHistory, diagnostic, minPrice, criteria.urgentLine);
   const row = document.createElement("tr");
 
   row.append(
@@ -174,7 +175,9 @@ function monitoringSummaryRow(complex, latestHistory, diagnostic) {
     tableCell(formatPrice(complex.targetPriceKrw)),
     tableCell(formatPrice(minPrice)),
     tableCell(formatPrice(positiveNumber(latestHistory?.recent_trade_price_krw))),
-    tableCell(formatPrice(urgentLine)),
+    tableCell(formatPrice(criteria.urgentLine)),
+    tableCell(criteria.appliedCriterion),
+    tableCell(formatRemaining(remaining)),
     tableCell(formatPercent(gapRatio)),
     monitoringStatusCell(status),
   );
@@ -184,7 +187,7 @@ function monitoringSummaryRow(complex, latestHistory, diagnostic) {
 function monitoringEmptyRow(message) {
   const row = document.createElement("tr");
   const cell = tableCell(message);
-  cell.colSpan = 8;
+  cell.colSpan = 10;
   row.append(cell);
   return row;
 }
@@ -217,13 +220,31 @@ function latestHistoryEntry(history) {
 }
 
 function urgentLinePrice(complex, latestHistory) {
+  return criteriaThresholds(complex, latestHistory).urgentLine;
+}
+
+function criteriaThresholds(complex, latestHistory) {
   const targetLine = positiveNumber(complex.targetPriceKrw);
   const tradeBaseline = positiveNumber(latestHistory?.recent_trade_price_krw);
+  const discountRatio = Number(complex.urgentDiscountRatio || 0);
   if (!tradeBaseline) {
-    return targetLine;
+    return {
+      targetLine,
+      tradeBaseline: null,
+      baselineDiscountLine: null,
+      urgentLine: targetLine,
+      appliedCriterion: "희망가 상한",
+    };
   }
-  const baselineLine = Math.floor(tradeBaseline * (1 - Number(complex.urgentDiscountRatio || 0)));
-  return targetLine ? Math.min(targetLine, baselineLine) : baselineLine;
+  const baselineDiscountLine = Math.floor(tradeBaseline * (1 - discountRatio));
+  const urgentLine = targetLine ? Math.min(targetLine, baselineDiscountLine) : baselineDiscountLine;
+  return {
+    targetLine,
+    tradeBaseline,
+    baselineDiscountLine,
+    urgentLine,
+    appliedCriterion: urgentLine === baselineDiscountLine ? "실거래 할인선" : "희망가 상한",
+  };
 }
 
 function priceGapRatio(minPrice, urgentLine) {
@@ -231,6 +252,18 @@ function priceGapRatio(minPrice, urgentLine) {
     return null;
   }
   return ((minPrice - urgentLine) / urgentLine) * 100;
+}
+
+function remainingToUrgentLine(minPrice, urgentLine) {
+  if (!minPrice || !urgentLine) {
+    return null;
+  }
+  const amount = Math.max(minPrice - urgentLine, 0);
+  return {
+    amount,
+    ratio: (amount / urgentLine) * 100,
+    reached: minPrice <= urgentLine,
+  };
 }
 
 function monitoringStatus(latestHistory, diagnostic, minPrice, urgentLine) {
@@ -609,6 +642,16 @@ function formatPercent(value) {
     return "-";
   }
   return `${number >= 0 ? "+" : ""}${number.toFixed(1)}%`;
+}
+
+function formatRemaining(value) {
+  if (!value) {
+    return "-";
+  }
+  if (value.reached) {
+    return "도달/초과";
+  }
+  return `${formatPrice(value.amount)} (${value.ratio.toFixed(1)}%)`;
 }
 
 function formatTime(value) {
