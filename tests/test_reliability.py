@@ -383,6 +383,11 @@ class ReliabilityTests(unittest.TestCase):
         )
         self.assertEqual(baseline_candidates[0].decision, "approve")
         self.assertEqual(baseline_candidates[0].reason, "baseline_price")
+        self.assertEqual(baseline_candidates[0].listing["target_price_krw"], 840000000)
+        self.assertEqual(baseline_candidates[0].listing["recent_trade_price_krw"], 925000000)
+        self.assertEqual(baseline_candidates[0].listing["baseline_limit_krw"], 832500000)
+        self.assertEqual(baseline_candidates[0].listing["target_gap_krw"], -8000000)
+        self.assertEqual(baseline_candidates[0].listing["baseline_gap_krw"], -500000)
 
         fallback_candidates = classify_candidates(
             (TARGET,),
