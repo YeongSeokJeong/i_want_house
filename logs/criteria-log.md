@@ -9,3 +9,4 @@
 | 2026-06-16T04:22:00+00:00 | baengnyeonsan-hillstate-3 | hogangnono:177322 | reject | above_target_price | 1300000000 |
 | 2026-06-16T13:28:59+00:00 | baengnyeonsan-hillstate-3 | hogangnono:177322 | reject | above_target_price | 1300000000 |
 | 2026-06-17T04:17:08+00:00 | baengnyeonsan-hillstate-3 | hogangnono:177322 | reject | above_target_price | 1300000000 |
+| 2026-06-17T12:52:55+00:00 | baengnyeonsan-hillstate-3 | hogangnono:177322 | reject | above_target_price | 1300000000 |
