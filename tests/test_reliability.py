@@ -237,9 +237,11 @@ class ReliabilityTests(unittest.TestCase):
         fetcher = listing_fetcher_from_env({"JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono"})
 
         self.assertIsNotNone(fetcher)
-        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_HOGANGNONO_APT_HASH_MAP"):
+        with self.assertRaisesRegex(SourceFetchError, "JEONSELOOP_HOGANGNONO_APT_HASH_MAP") as raised:
             assert fetcher is not None
             fetcher(TARGET)
+        self.assertIn("missing complex_id 'sample-apt'", str(raised.exception))
+        self.assertIn('{"sample-apt":"<hogangnono_apt_hash>"}', str(raised.exception))
 
     def test_hogangnono_source_kind_accepts_direct_apt_hash(self) -> None:
         seen_urls: list[str] = []
@@ -505,9 +507,24 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["reason"], "collector_failed")
         self.assertIn("JEONSELOOP_HOGANGNONO_APT_HASH_MAP", result["error"])
+        self.assertIn("baengnyeonsan-hillstate-3", result["error"])
         self.assertEqual(health["latest"]["reason"], "collector_failed")
         self.assertEqual(diagnostics["source_kind"], "hogangnono")
         self.assertEqual(diagnostics["failure_stage"], "listing_collection")
+        self.assertEqual(diagnostics["required_env"], "JEONSELOOP_HOGANGNONO_APT_HASH_MAP")
+        self.assertEqual(
+            diagnostics["missing_mapping_targets"],
+            [
+                {
+                    "complex_id": "baengnyeonsan-hillstate-3",
+                    "example_entry": '"baengnyeonsan-hillstate-3":"<hogangnono_apt_hash>"',
+                },
+                {
+                    "complex_id": "bulgwang-miseong",
+                    "example_entry": '"bulgwang-miseong":"<hogangnono_apt_hash>"',
+                },
+            ],
+        )
         self.assertNotIn("secret-token", json.dumps(diagnostics))
         self.assertEqual(preserved_listing_text, '{"listings":[{"listing_id":"previous"}]}')
 

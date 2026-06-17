@@ -308,16 +308,23 @@ def _collector_diagnostics(
     error: Exception,
     target_complex_ids: tuple[str, ...],
 ) -> dict[str, Any]:
-    return {
+    source_kind = _listing_source_kind_for_diagnostics()
+    diagnostics: dict[str, Any] = {
         "run_id": run_record["run_id"],
         "generated_at": run_record["finished_at"],
         "run_reason": reason,
         "failure_stage": _failure_stage(reason),
-        "source_kind": _listing_source_kind_for_diagnostics(),
+        "source_kind": source_kind,
         "error_type": type(error).__name__,
         "error": str(error),
         "targets": [{"complex_id": complex_id} for complex_id in target_complex_ids],
     }
+    if source_kind == "hogangnono" and "JEONSELOOP_HOGANGNONO_APT_HASH_MAP" in str(error):
+        missing_targets = _missing_hogangnono_mapping_targets(target_complex_ids)
+        if missing_targets:
+            diagnostics["required_env"] = "JEONSELOOP_HOGANGNONO_APT_HASH_MAP"
+            diagnostics["missing_mapping_targets"] = missing_targets
+    return diagnostics
 
 
 def _failure_stage(reason: str) -> str:
@@ -394,3 +401,17 @@ def _hogangnono_apt_hash_for_diagnostics(complex_id: str) -> str | None:
     if text and text.isalnum() and any(ch.isdigit() for ch in text):
         return text
     return None
+
+
+def _missing_hogangnono_mapping_targets(target_complex_ids: tuple[str, ...]) -> list[dict[str, str]]:
+    missing: list[dict[str, str]] = []
+    for complex_id in target_complex_ids:
+        if _hogangnono_apt_hash_for_diagnostics(complex_id):
+            continue
+        missing.append(
+            {
+                "complex_id": complex_id,
+                "example_entry": f'"{complex_id}":"<hogangnono_apt_hash>"',
+            }
+        )
+    return missing

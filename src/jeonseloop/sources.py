@@ -262,7 +262,8 @@ class HogangnonoListingSourceClient:
             return target.complex_id
         raise SourceFetchError(
             "hogangnono source requires JEONSELOOP_HOGANGNONO_APT_HASH_MAP entry "
-            f"for complex_id '{target.complex_id}' or a direct Hogangnono apt hash"
+            f"for missing complex_id '{target.complex_id}' or a direct Hogangnono apt hash; "
+            f"add JSON entry {{\"{target.complex_id}\":\"<hogangnono_apt_hash>\"}}"
         )
 
     def _items_url(self, apt_hash: str, offset: int) -> str:
