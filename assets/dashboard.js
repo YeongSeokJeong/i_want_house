@@ -588,12 +588,23 @@ async function renderFeed(complexId) {
   const count = document.getElementById("feedCount");
 
   try {
-    const payload = await fetchJson("data/state/urgent-feed.json");
+    const [payload, historyPayload] = await Promise.all([
+      fetchJson("data/state/urgent-feed.json"),
+      fetchJson(`data/history/${complexId}.json`).catch(() => ({ history: [] })),
+    ]);
     const feedItems = Array.isArray(payload.items) ? payload.items : [];
+    const complex = COMPLEXES.find((item) => item.id === complexId);
+    const latestHistory = latestHistoryEntry(Array.isArray(historyPayload.history) ? historyPayload.history : []);
     const sorted = feedItems
       .filter((item) => item.complex_id === complexId)
       .filter((item) => Number(item.price_krw) > 0)
-      .sort((a, b) => Number(b.alert_planned) - Number(a.alert_planned) || Number(a.price_krw) - Number(b.price_krw))
+      .map((item) => ({ ...item, urgencyGrade: candidateUrgencyGrade(item, complex, latestHistory) }))
+      .sort(
+        (a, b) =>
+          Number(b.alert_planned) - Number(a.alert_planned) ||
+          a.urgencyGrade.rank - b.urgencyGrade.rank ||
+          Number(a.price_krw) - Number(b.price_krw),
+      )
       .slice(0, 10);
 
     const overflow = Number(payload.alert_cap_overflow || 0);
@@ -603,11 +614,57 @@ async function renderFeed(complexId) {
       return;
     }
 
-    list.replaceChildren(...sorted.map(feedItem));
+    const alertItems = sorted.filter((item) => item.alert_planned);
+    const observationItems = sorted.filter((item) => !item.alert_planned);
+    list.replaceChildren(
+      feedSection("알림 대상", alertItems, "이번 실행에서 알림 예정인 후보가 없습니다."),
+      feedSection("관찰 대상", observationItems, "급매 전 단계로 볼 후보가 없습니다."),
+    );
   } catch (error) {
     count.textContent = "오류";
     list.replaceChildren(emptyNode("후보 데이터를 불러오지 못했습니다."));
   }
+}
+
+function feedSection(title, items, emptyMessage) {
+  const section = document.createElement("section");
+  section.className = "feed-section";
+
+  const heading = document.createElement("h3");
+  heading.textContent = `${title} ${items.length}건`;
+  section.append(heading);
+
+  if (items.length === 0) {
+    section.append(emptyNode(emptyMessage));
+  } else {
+    const group = document.createElement("div");
+    group.className = "feed-section-list";
+    group.replaceChildren(...items.map(feedItem));
+    section.append(group);
+  }
+  return section;
+}
+
+function candidateUrgencyGrade(item, complex, latestHistory) {
+  if (!complex) {
+    return { kind: "unknown", label: "기준 부족", rank: 5, distance: null };
+  }
+  const price = positiveNumber(item.price_krw);
+  const urgentLine = criteriaThresholds(complex, latestHistory).urgentLine;
+  if (!price || !urgentLine) {
+    return { kind: "unknown", label: "기준 부족", rank: 5, distance: null };
+  }
+  const distance = ((price - urgentLine) / urgentLine) * 100;
+  if (distance <= 0) {
+    return { kind: "urgent", label: "급매", rank: 1, distance };
+  }
+  if (distance <= 5) {
+    return { kind: "near", label: "근접", rank: 2, distance };
+  }
+  if (distance <= 15) {
+    return { kind: "interest", label: "관심", rank: 3, distance };
+  }
+  return { kind: "far", label: "멀리 있음", rank: 4, distance };
 }
 
 function hasPriceData(history) {
@@ -689,8 +746,15 @@ function feedItem(item) {
   const node = document.createElement("article");
   node.className = "feed-item";
 
-  const title = document.createElement("h3");
+  const header = document.createElement("div");
+  header.className = "feed-item-header";
+  const title = document.createElement("h4");
   title.textContent = item.title || item.description || item.listing_id || "매물";
+  const grade = document.createElement("span");
+  const gradeKind = item.urgencyGrade?.kind || "unknown";
+  grade.className = `urgency-grade urgency-grade-${gradeKind}`;
+  grade.textContent = item.urgencyGrade?.label || "기준 부족";
+  header.append(title, grade);
 
   const meta = document.createElement("div");
   meta.className = "feed-meta";
@@ -708,8 +772,11 @@ function feedItem(item) {
   if (item.decision) {
     meta.append(span(item.decision));
   }
+  if (item.urgencyGrade) {
+    meta.append(span(formatGradeDistance(item.urgencyGrade)));
+  }
 
-  node.append(title, meta);
+  node.append(header, meta);
   if (item.link) {
     const link = document.createElement("a");
     link.className = "feed-link";
@@ -720,6 +787,16 @@ function feedItem(item) {
     node.append(link);
   }
   return node;
+}
+
+function formatGradeDistance(grade) {
+  if (!grade || !Number.isFinite(Number(grade.distance))) {
+    return "급매선 거리 -";
+  }
+  if (grade.distance <= 0) {
+    return `급매선 ${Math.abs(grade.distance).toFixed(1)}% 안쪽`;
+  }
+  return `급매선 +${grade.distance.toFixed(1)}%`;
 }
 
 function emptyNode(message) {

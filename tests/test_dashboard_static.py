@@ -58,6 +58,9 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("decisionSummary", script)
         self.assertIn("reasonLabel", script)
         self.assertIn("complexSummaryReason", script)
+        self.assertIn("candidateUrgencyGrade", script)
+        self.assertIn("formatGradeDistance", script)
+        self.assertIn("feedSection", script)
         self.assertIn("health?.runs", script)
         self.assertIn("listing_diagnostics", script)
 
@@ -80,6 +83,13 @@ class DashboardStaticTests(unittest.TestCase):
         self.assertIn("최근 후보 사유가 아직 없습니다.", script)
         self.assertIn("가격 기준 초과", script)
         self.assertIn("중복 매물 보류", script)
+        self.assertIn("알림 대상", script)
+        self.assertIn("관찰 대상", script)
+        self.assertIn("급매", script)
+        self.assertIn("근접", script)
+        self.assertIn("관심", script)
+        self.assertIn("멀리 있음", script)
+        self.assertIn("급매선 +", script)
 
     def test_dashboard_uses_current_watchlist_complexes(self) -> None:
         script = (ROOT / "assets" / "dashboard.js").read_text(encoding="utf-8")

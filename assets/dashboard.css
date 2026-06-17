@@ -321,9 +321,27 @@ canvas {
   text-align: center;
 }
 
-.feed-list {
+.feed-list,
+.feed-section-list {
   display: grid;
   gap: 10px;
+}
+
+.feed-section {
+  display: grid;
+  gap: 10px;
+}
+
+.feed-section + .feed-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.feed-section h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .diagnostics-list {
@@ -504,9 +522,49 @@ canvas {
   line-height: 1.45;
 }
 
-.feed-item h3 {
-  margin: 0 0 7px;
+.feed-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.feed-item h4 {
+  min-width: 0;
+  margin: 0;
   font-size: 15px;
+}
+
+.urgency-grade {
+  flex: 0 0 auto;
+  min-width: 64px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.urgency-grade-urgent {
+  background: #dff3ec;
+  color: #0d5f4a;
+}
+
+.urgency-grade-near {
+  background: #e7edff;
+  color: #3147a6;
+}
+
+.urgency-grade-interest {
+  background: #f2eadb;
+  color: var(--warn);
+}
+
+.urgency-grade-far,
+.urgency-grade-unknown {
+  background: #eceff3;
+  color: var(--muted);
 }
 
 .feed-meta {
