@@ -6,15 +6,15 @@ Read `AGENTS.md`, `docs/backlog.md`, and the relevant skill instructions before 
 
 ## Goal
 
-Advance at most one unfinished backlog item by one bounded, verifiable step.
+Complete at most one unfinished backlog item all the way to `Done`, including verification, backlog closeout, and required handoff artifacts.
 
-Timebox this run to about 45 minutes. If the task cannot reach a clean verification point within that time, stop after recording progress and remaining work.
+Timebox this run to about 45 minutes. If the selected task cannot be completed to `Done` within that time, stop only after recording concrete progress, the exact remaining work, and the blocker or reason it could not be completed.
 
 ## Hard Constraints
 
 - Do not send Telegram alerts.
 - Do not use `--send`.
-- Do not commit, push, or open PRs unless explicitly instructed.
+- Do not commit, push, or open PRs for unrelated work. Commit, push, or open PRs only when they are required by the selected backlog item or the applicable lifecycle closeout rules.
 - Do not overwrite unrelated user changes.
 - If the git worktree is dirty, inspect the changes and work around them. Stop if the selected task would conflict with existing unrelated changes.
 - Preserve existing JSON state on failure. Use validate-before-replace paths for state writes.
@@ -34,7 +34,7 @@ Timebox this run to about 45 minutes. If the task cannot reach a clean verificat
 - Do not make broad architecture decisions in this unattended loop.
 - Do not change public behavior, environment variable contracts, secrets handling, workflow schedules, or large module boundaries unless the selected backlog item explicitly requires that scope.
 - Do not rewrite large modules opportunistically.
-- If the selected task appears larger than one bounded step, record the next smallest step and stop after completing only that step.
+- If the selected task appears larger than this run can safely complete, still work toward `Done`; stop only at a clean verification boundary with explicit remaining work and a reason completion was not possible.
 - If human judgment is needed for product direction, architecture tradeoffs, or operating policy, mark or keep the item `Blocked` or `Doing` with a clear question instead of guessing.
 
 ## Task Selection
@@ -50,17 +50,18 @@ Timebox this run to about 45 minutes. If the task cannot reach a clean verificat
 - Classify the selected item by `Route`.
 - For `source-code` route:
   - Use `/large-task-orchestrator start` or `/large-task-orchestrator next` with a stable task name derived from the backlog item.
-  - Make only the smallest coherent change needed for the current step.
+  - Continue through `/large-task-orchestrator done` when the selected backlog item is complete.
+  - Make the smallest coherent set of changes needed to complete the selected backlog item.
   - Run focused tests first, then broader tests if the touched surface warrants it.
 - For non-source routes:
-  - Make the smallest durable documentation, skill, prompt, or backlog update needed.
+  - Make the smallest durable documentation, skill, prompt, or backlog update needed to complete the selected backlog item.
   - Verify links, paths, status values, and required result fields.
 
 ## Backlog Update Rules
 
-- Change `Todo` to `Doing` only when actual work has started.
+- Change `Todo` to `Doing` only when actual work has started, then continue toward `Done` in the same run.
 - Mark `Done` only when the backlog task is actually complete, verified, and the `Completed`, `Artifact`, and `Result` fields are specific.
-- If the work is incomplete but progress was made, keep or set `Doing` and record progress in the appropriate orchestration or report artifact.
+- If the work is incomplete but progress was made, keep or set `Doing` and record progress, remaining work, and the reason completion was not possible in the appropriate orchestration or report artifact.
 - If blocked, set `Blocked` only when the blocker is concrete and cannot be resolved in this run.
 - If verification fails, do not revert unrelated changes. Keep the worktree as-is only if the changes are useful and documented; otherwise stop and report the failing verification clearly.
 
@@ -76,7 +77,7 @@ Write or update `reports/backlog-agent-loop.md` with:
 - verification commands and results
 - remaining work or blocker
 
-Stop after one bounded step.
+Stop after the selected backlog item is `Done`, or after recording why it could not be completed to `Done` in this run.
 
 ## Recommended Execution Example
 
