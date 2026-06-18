@@ -13,7 +13,7 @@ description: |
 
 ## Objective
 
-Manage large, complex development tasks across multiple sessions by splitting work into discrete feature units (with feature IDs), preserving continuity through task-scoped markdown artifacts, and keeping all feature commits on one task-scoped branch.
+Manage large, complex development tasks across multiple sessions by splitting work into discrete feature units (with feature IDs), preserving continuity through task-scoped markdown artifacts, and keeping all implementation work in one independent task worktree on one task-scoped branch.
 
 ## Trigger Prefix
 
@@ -53,14 +53,14 @@ Use one task-scoped directory per large task:
 10. **Plan revision is allowed, but only with explicit version bump and revision log update in `plan.md`, and MUST run via `/large-task-orchestrator revise <task-name>`.**
 11. **Always update `plan.md`, `progress.md`, `decision.md`, and related backlog items before ending a session, using `/large-task-orchestrator revise <task-name>` when continuity docs need structural updates.**
 12. **`plan.md` must assign stable Feature IDs (for example `F-001`, `F-002`), and `progress.md` must track implementation status by the same IDs.**
-13. **`start` must ask SCM Agent to request or prepare one dedicated task worktree and one task branch for the whole large task, then record both in continuity docs.**
-14. **`next`/`resume` must reuse the recorded task branch and task worktree; do not create per-feature branches or worktrees.**
+13. **`start` must ask SCM Agent to request or prepare one independent task worktree and one task branch for the whole large task, then record both in continuity docs. The task worktree must be separate from the primary repository checkout unless the user explicitly designates the current checkout as the task worktree or the session is already running inside the recorded task worktree.**
+14. **`next`/`resume` must reuse the recorded task branch and task worktree; do not create per-feature branches or worktrees, and do not implement from the primary checkout when a task worktree is recorded.**
 15. **Each feature must land as one feature-scoped commit on the shared task branch before moving to the next feature.**
-16. **Every commit message must follow Conventional Commits and reference the task + feature scope.**
+16. **Every feature commit message must follow Conventional Commits and reference the task + feature scope.**
    - Example: `feat(checkout-funnel/f-002): add invoice retry worker`
 17. **`next` is the execution lifecycle command: it handles session start/resume and session close/handoff for implementation flow.**
 18. **`revise` is documentation-only: it updates `plan.md`, `progress.md`, `decision.md`, and backlog links/status when scope changes require it; it does not implement code.**
-19. **`done` must write a final summary file in `./docs/handoff/`, run the `wiki-write` closeout check for durable wiki updates, and close linked backlog items with `Artifact` and `Result`; do not update `README.md` in this step.**
+19. **`done` must write a final summary file in `./docs/handoff/`, run the `wiki-write` closeout check for durable wiki updates, close linked backlog items with `Artifact` and `Result`, push the task branch, create or update a pull request, record the PR URL, and create a closeout commit when files changed; do not update `README.md` in this step.**
 
 ## Workflow-Owned Agent Policy
 
@@ -95,9 +95,11 @@ If `<task-name>` is missing for the selected command, ask one question:
 
 - Use Conventional Commits.
 - Use the single task branch created by `/large-task-orchestrator start <task-name>`.
-- Use the task worktree recorded by `/large-task-orchestrator start <task-name>` when one is available.
+- Use the independent task worktree recorded by `/large-task-orchestrator start <task-name>` when one is available.
+- Do not implement or commit large-task work from the primary repository checkout when a task worktree is recorded.
 - Scope must include `<task-name>/<feature-id>`.
 - Each completed feature is represented by one final commit on that task branch.
+- `/large-task-orchestrator done` may add one closeout commit with scope `<task-name>/closeout` after final docs, wiki, backlog updates, and PR URL recording are complete.
 - Do not commit feature work without passing tests and QA.
 
 Examples:
@@ -106,7 +108,21 @@ Examples:
 feat(checkout-funnel/f-001): implement login API and token issuer
 fix(checkout-funnel/f-002): correct retry idempotency key behavior
 refactor(checkout-funnel/f-003): separate aggregation service
+chore(checkout-funnel/closeout): finalize orchestration closeout
 ```
+
+---
+
+## Pull Request Policy
+
+- `/large-task-orchestrator done <task-name>` must push the task branch and create or update a pull request against the repository default branch.
+- Reuse an existing open PR for the task branch when one exists; otherwise create a new PR.
+- Before opening a PR, inspect `git log <base>..HEAD` and classify commits by backlog ID, task name, and touched file surface.
+- Do not open a mixed-scope PR when unrelated stacked commits would be included. First create or update PRs for complete prerequisite branches, or create a clean PR branch from the appropriate base and cherry-pick only the selected task commits.
+- Open stacked PRs against their prerequisite task branch only when that keeps each PR reviewable and the dependency is stated in the PR body.
+- Record the PR URL in `progress.md`, the final handoff document, and related backlog `Artifact`/`Result` fields.
+- Do not mark the orchestration fully done unless a PR URL is recorded or the user explicitly waives PR creation.
+- If PR creation is blocked by missing GitHub CLI, authentication, remote configuration, branch protection, network access, cherry-pick conflicts, failing verification, or a task commit set that cannot be separated confidently, stop and report the exact blocker plus the command that should be retried.
 
 ---
 
