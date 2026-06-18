@@ -8,7 +8,9 @@ $env:PYTHONPATH="src"
 python -m jeonseloop.telegram_backlog_intake --updates-path data/state/telegram-updates.json
 ```
 
-운영 자동화는 `.github/workflows/telegram-backlog-intake.yml`에서 매시간 `getUpdates`를 읽고, 이미 처리한 `update_id`는 다시 백로그에 추가하지 않는다. 요청이 충분히 구체적이지 않으면 백로그 행 대신 `clarification_needed` 초안을 상태 파일에 남긴다.
+운영 자동화는 로컬 Codex 실행으로 수행한다. 권장 명령은 `docs/telegram-backlog-local-intake.md`에 있으며, `.codex/prompts/telegram-backlog-local-intake.md` 프롬프트가 최근 `getUpdates` 저장, dry-run 확인, 로컬 backlog/state 반영, 보고서 작성을 순서대로 지시한다. 이미 처리한 `update_id`는 다시 백로그에 추가하지 않는다. 요청이 충분히 구체적이지 않으면 백로그 행 대신 `clarification_needed` 초안을 상태 파일에 남긴다.
+
+`.github/workflows/telegram-backlog-intake.yml`은 정기 실행하지 않으며, 필요할 때 수동 dry-run 점검으로만 사용한다. 이 workflow는 backlog/state 변경을 커밋하지 않는다.
 MCP에서는 `telegram_triage_saved_updates` 도구로 같은 saved update triage를 실행할 수 있다.
 
 이 repo-local MCP 서버는 Telegram Bot API 점검용 도구를 제공한다. 실제 토큰과 chat ID는 환경 변수 또는 로컬 `.env`에서만 읽고 저장소에 기록하지 않는다.

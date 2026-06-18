@@ -93,20 +93,24 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("collector-recovery-report.md", text)
         self.assertNotIn("git push", text)
 
-    def test_telegram_backlog_intake_workflow_is_read_only_toward_telegram(self) -> None:
+    def test_telegram_backlog_intake_workflow_is_manual_dry_run_only(self) -> None:
         text = TELEGRAM_INTAKE_WORKFLOW.read_text(encoding="utf-8")
 
-        self.assertIn('cron: "0 * * * *"', text)
+        self.assertIn("workflow_dispatch:", text)
+        self.assertNotIn("schedule:", text)
+        self.assertRegex(text, re.compile(r"permissions:\s+contents: read", re.MULTILINE))
         self.assertIn("python -m jeonseloop.telegram_backlog_intake $args", text)
         self.assertIn("--fetch-updates", text)
         self.assertIn("--write-fetched-updates", text)
         self.assertIn("--updates-path $RUNNER_TEMP/telegram-updates.json", text)
+        self.assertIn("--dry-run", text)
         self.assertIn("python -m jeonseloop.telegram_ops $args", text)
         self.assertNotIn("--send", text)
         self.assertNotIn("sendMessage", text)
         self.assertNotIn("--chat-id $TELEGRAM_CHAT_ID", text)
-        self.assertIn("git add docs/backlog.md data/state/telegram-intake.json", text)
-        self.assertNotIn("git add docs/backlog.md data/state/telegram-intake.json data/state/telegram-updates.json", text)
+        self.assertNotIn("git add", text)
+        self.assertNotIn("git commit", text)
+        self.assertNotIn("git push", text)
 
 
 if __name__ == "__main__":
