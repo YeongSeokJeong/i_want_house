@@ -117,9 +117,12 @@ chore(checkout-funnel/closeout): finalize orchestration closeout
 
 - `/large-task-orchestrator done <task-name>` must push the task branch and create or update a pull request against the repository default branch.
 - Reuse an existing open PR for the task branch when one exists; otherwise create a new PR.
+- Before opening a PR, inspect `git log <base>..HEAD` and classify commits by backlog ID, task name, and touched file surface.
+- Do not open a mixed-scope PR when unrelated stacked commits would be included. First create or update PRs for complete prerequisite branches, or create a clean PR branch from the appropriate base and cherry-pick only the selected task commits.
+- Open stacked PRs against their prerequisite task branch only when that keeps each PR reviewable and the dependency is stated in the PR body.
 - Record the PR URL in `progress.md`, the final handoff document, and related backlog `Artifact`/`Result` fields.
 - Do not mark the orchestration fully done unless a PR URL is recorded or the user explicitly waives PR creation.
-- If PR creation is blocked by missing GitHub CLI, authentication, remote configuration, branch protection, or network access, stop and report the exact blocker plus the command that should be retried.
+- If PR creation is blocked by missing GitHub CLI, authentication, remote configuration, branch protection, network access, cherry-pick conflicts, failing verification, or a task commit set that cannot be separated confidently, stop and report the exact blocker plus the command that should be retried.
 
 ---
 

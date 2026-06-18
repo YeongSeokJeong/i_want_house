@@ -42,7 +42,9 @@ Use these rules when SCM Agent is invoked by `large-task-orchestrator`.
 5. At `/large-task-orchestrator next|resume <task-name>`, verify the recorded worktree path before implementation resumes and run implementation tools from that worktree.
 6. Do not create per-feature worktrees unless the user explicitly asks; feature separation remains by commits on the shared task branch.
 7. At `/large-task-orchestrator done <task-name>`, push the task branch and create or update a pull request against the default branch; record the PR URL in orchestration docs and backlog artifacts.
-8. If worktree or PR creation is blocked by local filesystem state, permissions, authentication, remote configuration, or an existing checkout, stop and report the exact blocker instead of silently continuing on an unrecorded workspace.
+8. Before opening the PR, inspect `git log <base>..HEAD`; if unrelated stacked commits would be included, first create/update prerequisite PRs or create a clean branch from the appropriate base and cherry-pick only the selected task commits.
+9. If a stacked PR base is used to keep the diff scoped, record the base PR dependency in the PR body and orchestration docs.
+10. If worktree or PR creation is blocked by local filesystem state, permissions, authentication, remote configuration, an existing checkout, cherry-pick conflicts, failing verification, or an unseparable commit set, stop and report the exact blocker instead of silently continuing on an unrecorded workspace.
 
 ---
 

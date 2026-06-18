@@ -15,6 +15,7 @@ Exit criteria for project finalization.
 - [ ] Completed backlog rows include `Completed`, `Artifact`, and specific `Result`.
 - [ ] If wiki content was written, backlog `Result` names the wiki file, heading/section, and concrete change.
 - [ ] Unresolved risks, external-state checks, and deferred follow-ups are represented as separate routed backlog items when they remain after closeout.
+- [ ] Branch commits are classified against the PR base, and unrelated stacked commits are excluded by prerequisite PRs, clean cherry-pick branch, or an explicitly documented stacked PR base.
 - [ ] Task branch is pushed to the default remote before PR creation.
 - [ ] Pull request is created or updated against the default branch.
 - [ ] Pull request URL is recorded in `progress.md`, the final handoff document, and linked backlog `Artifact`/`Result` fields.

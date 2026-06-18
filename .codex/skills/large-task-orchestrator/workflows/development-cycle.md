@@ -210,6 +210,9 @@ Key files: <file list>"
    - create or leave separate `Todo`/`Blocked` rows for unresolved risks, external-state checks, or deferred follow-ups
 8. Use [SCM Agent](../../../agents/scm.agent.md) to finalize the PR-ready branch:
    - verify the final status in the recorded task worktree
+   - inspect the branch commit stack against the target base and classify commits by backlog ID, task name, and touched file surface
+   - if unrelated stacked commits would enter the PR, create/update prerequisite PRs first or create a clean PR branch from the appropriate base and cherry-pick only this task's commits
+   - use a stacked PR base only when it keeps the selected task diff scoped and the dependency is recorded in the PR body
    - push the task branch to the default remote so a PR can be opened or refreshed
    - create or update a pull request against the repository default branch and capture its URL
    - record the PR URL in `./docs/orchestration/<task-name>/progress.md`, `./docs/handoff/<task-name>-final.md`, and linked backlog `Artifact`/`Result` fields
