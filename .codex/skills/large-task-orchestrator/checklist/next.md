@@ -10,7 +10,7 @@ Exit criteria for running `next` as the single lifecycle command.
 - [ ] `plan.md`, `progress.md`, `decision.md`, `architecture.md` are loaded before action.
 - [ ] Linked `BL-*` items are loaded from `docs/backlog.md` when present.
 - [ ] The recorded task branch is loaded and reused; no per-feature branch is created.
-- [ ] The recorded task worktree is verified or explicitly recorded as the current checkout; no per-feature worktree is created.
+- [ ] The recorded task worktree is verified and used for implementation; no per-feature worktree is created.
 
 ### Open Mode (start/resume execution)
 

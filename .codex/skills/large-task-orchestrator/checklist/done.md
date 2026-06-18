@@ -15,4 +15,9 @@ Exit criteria for project finalization.
 - [ ] Completed backlog rows include `Completed`, `Artifact`, and specific `Result`.
 - [ ] If wiki content was written, backlog `Result` names the wiki file, heading/section, and concrete change.
 - [ ] Unresolved risks, external-state checks, and deferred follow-ups are represented as separate routed backlog items when they remain after closeout.
+- [ ] Task branch is pushed to the default remote before PR creation.
+- [ ] Pull request is created or updated against the default branch.
+- [ ] Pull request URL is recorded in `progress.md`, the final handoff document, and linked backlog `Artifact`/`Result` fields.
+- [ ] Final closeout changes, including PR URL recording, are committed on the task branch with `chore(<task-name>/closeout): finalize orchestration closeout`, when files changed.
+- [ ] Closeout commit is pushed to the default remote.
 - [ ] Final project summary posted to chat.

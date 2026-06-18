@@ -66,7 +66,8 @@ Read, in order:
 5. `./docs/orchestration/<task-name>/decision.md` (prior decisions and constraints)
 6. `./docs/orchestration/<task-name>/architecture.md` (system and dependency context)
 7. `docs/backlog.md` if present, using `backlog-management` to find linked `BL-*` items from `plan.md`/`progress.md`.
-8. Verify the current work continues on that task branch and, when recorded, in that task worktree. If docs are missing the branch or worktree, repair the docs before continuing implementation.
+8. Verify the current work continues on that task branch and in the recorded task worktree. If docs are missing the branch or worktree, repair the docs from SCM evidence before continuing implementation. Do not repair missing metadata by recording the primary checkout unless the user explicitly designates it as the task worktree.
+9. If the current shell is not operating from the recorded task worktree, switch tool working directories to the recorded task worktree before reading or editing implementation files. If the recorded worktree is unavailable, stop and report the blocker.
 
 ### Step A1: Open Mode (start/resume execution)
 
@@ -91,7 +92,7 @@ Output this exact block:
 ### 🎯 This Session Goal
 - Task: <task-name>
 - Branch: <task-branch>
-- Worktree: <task-worktree path, or "current checkout">
+- Worktree: <recorded task-worktree path>
 - Feature ID: <feature-id>
 - Feature: <feature name>
 - Backlog: <BL-* id and route, or "None">
@@ -110,7 +111,7 @@ Output this exact block:
 
 Run this implementation sequence (same stage order as feature-implementation, but the task-branch policy here overrides feature-branch creation):
 
-1. [SCM Agent](../../../agents/scm.agent.md): verify or switch to the recorded task worktree and task branch; create them only if the start workflow did not already do so and the user approves
+1. [SCM Agent](../../../agents/scm.agent.md): verify or switch to the recorded task worktree and task branch; create an independent task worktree only if the start workflow did not already do so and the user approves
 2. [Backend Agent](../../../agents/backend.agent.md): implement feature + tests
 3. [QA Agent](../../../agents/qa.agent.md): mandatory QA gate
 4. If QA FAIL(CRITICAL/HIGH): iterate fix loop until pass or explicit stop
@@ -139,7 +140,7 @@ Do not proceed to another feature until test + QA pass and the feature commit is
 - Session: <N>
 - Task: <task-name>
 - Branch: <task-branch>
-- Worktree: <task-worktree path, or "current checkout">
+- Worktree: <recorded task-worktree path>
 - Feature ID: <feature-id>
 - Feature: <feature name>
 - Commit: <commit hash>
@@ -207,8 +208,17 @@ Key files: <file list>"
    - fill `Completed`, `Artifact`, and `Result`
    - if the task wrote wiki content, include exact wiki file path, heading/section, and concrete change in `Result`
    - create or leave separate `Todo`/`Blocked` rows for unresolved risks, external-state checks, or deferred follow-ups
-8. Output final project summary with:
+8. Use [SCM Agent](../../../agents/scm.agent.md) to finalize the PR-ready branch:
+   - verify the final status in the recorded task worktree
+   - push the task branch to the default remote so a PR can be opened or refreshed
+   - create or update a pull request against the repository default branch and capture its URL
+   - record the PR URL in `./docs/orchestration/<task-name>/progress.md`, `./docs/handoff/<task-name>-final.md`, and linked backlog `Artifact`/`Result` fields
+   - create one `chore(<task-name>/closeout): finalize orchestration closeout` commit when final handoff, wiki, backlog, progress, or PR URL recording changed files
+   - push the closeout commit to the same task branch
+   - if PR creation is blocked, leave the task not fully done unless the user explicitly waives PR creation
+9. Output final project summary with:
    - handoff document path
    - wiki-write closeout result
    - backlog-management closeout result
    - final QA gate result
+   - pull request URL

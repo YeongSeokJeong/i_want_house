@@ -113,15 +113,16 @@ Seed `plan.md` revision controls from Session 1:
 
 ### Stage 9: Task Worktree and Branch Initialization
 
-Create or select one task-scoped worktree and one task-scoped working branch for the whole orchestration:
+Create or select one independent task-scoped worktree and one task-scoped working branch for the whole orchestration:
 
-1. Use [SCM Agent](../../../agents/scm.agent.md) to ask for or propose a dedicated task worktree.
-2. If the current checkout is already the intended task worktree, record the current path instead of creating another worktree.
-3. If the user approves a new worktree, use SCM Agent to create it with a safe `git worktree add <path> <branch>` workflow.
-4. Use [SCM Agent](../../../agents/scm.agent.md) to create and check out the task branch in the selected worktree.
-5. Follow repository branch conventions if they exist; otherwise default to `task/<task-name>`.
-6. Record the resolved task branch name and task worktree path in both `plan.md` and `progress.md`.
-7. Do not create per-feature branches or worktrees after this point; feature separation happens by commit.
+1. Use [SCM Agent](../../../agents/scm.agent.md) to propose a dedicated task worktree path separate from the primary repository checkout.
+2. Record the current checkout only when the user explicitly designates it as the task worktree or the session is already running inside a previously recorded task worktree; record the rationale in `decision.md`.
+3. Otherwise create or prepare the independent task worktree with a safe `git worktree add <path> <branch>` workflow before implementation begins, requesting any required filesystem approval when the path is outside the current writable workspace.
+4. If the independent worktree cannot be created or used, stop before implementation and report the blocker; do not silently continue in the primary checkout.
+5. Use [SCM Agent](../../../agents/scm.agent.md) to create and check out the task branch in the selected worktree.
+6. Follow repository branch conventions if they exist; otherwise default to `task/<task-name>`.
+7. Record the resolved task branch name and task worktree path in both `plan.md` and `progress.md`.
+8. Do not create per-feature branches or worktrees after this point; feature separation happens by commit.
 
 ### Stage 10: Session 1 Summary
 
@@ -145,5 +146,5 @@ Output Session 1 summary to chat with:
 - Architecture review is complete and documented with feature-ID mapping.
 - `./docs/orchestration/<task-name>/plan.md`, `./docs/orchestration/<task-name>/progress.md`, `./docs/orchestration/<task-name>/decision.md`, `./docs/orchestration/<task-name>/architecture.md` exist and are initialized.
 - Plan revision policy is explicit in `plan.md`.
-- A single task branch and task worktree are selected or created and recorded for reuse across sessions.
+- A single task branch and independent task worktree are selected or created and recorded for reuse across sessions.
 - Session 1 summary is delivered.

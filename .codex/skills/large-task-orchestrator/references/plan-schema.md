@@ -7,7 +7,7 @@
 - Task Name: <user-facing task name>
 - Task ID: <kebab-case id>
 - Task Branch: <task branch name>
-- Task Worktree: <task worktree path or current checkout>
+- Task Worktree: <independent task worktree path>
 - Plan Version: v1
 - Last Updated: <date>
 

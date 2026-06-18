@@ -7,7 +7,8 @@
 - Task Name: <user-facing task name>
 - Task ID: <kebab-case id>
 - Task Branch: <task branch name>
-- Task Worktree: <task worktree path or current checkout>
+- Task Worktree: <independent task worktree path>
+- Pull Request: <PR URL or ->
 - Status: IN_PROGRESS | COMPLETED
 - Plan Version: <current plan version>
 - Current Session: <N>
