@@ -37,6 +37,15 @@ Timebox this run to about 45 minutes. If the selected task cannot be completed t
 - If the selected task appears larger than this run can safely complete, still work toward `Done`; stop only at a clean verification boundary with explicit remaining work and a reason completion was not possible.
 - If human judgment is needed for product direction, architecture tradeoffs, or operating policy, mark or keep the item `Blocked` or `Doing` with a clear question instead of guessing.
 
+## Stacked Branch Remediation
+
+- Before stopping because a task branch contains unrelated stacked commits, classify the commits in `git log <base>..HEAD` by backlog ID, task name, and touched file surface.
+- If unrelated commits are complete, clean, and already pushed to a remote task branch, create or update their PR first instead of silently treating them as a blocker.
+- If the selected source-code task has a small, identifiable commit set, create a clean PR branch from the current default branch and cherry-pick only the selected task commits. Do this only when the worktree is clean and the commit set can be identified from commit messages, orchestration docs, or file paths.
+- After creating a clean branch, rerun the focused and required broad verification for the selected task, then continue `/large-task-orchestrator done` on the clean branch.
+- If cherry-pick conflicts, tests fail, or the selected task commits cannot be separated confidently, write the exact blocker and the command that should be retried. Do not open a mixed-scope PR.
+- Record any superseded dirty/stacked branch and the clean PR branch in `reports/backlog-agent-loop.md` and the task orchestration progress file.
+
 ## Task Selection
 
 1. Prefer an existing `Doing` item if it can be safely continued.
