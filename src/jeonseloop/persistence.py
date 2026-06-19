@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from .analyzer import Candidate, approved_candidates
+from .models import FeedItem, RunRecord
 from .suggestions import write_criteria_suggestions
 from .validator import ValidationIssue
 
@@ -50,10 +51,16 @@ class LoopStateRepository:
         notified_updates: dict[str, dict[str, Any]],
         trade_baselines: dict[str, int] | None = None,
     ) -> None:
+        run_payload = RunRecord.from_dict(run_record).to_dict()
         logs_dir = self._require_logs_dir()
         for complex_id, records in records_by_complex.items():
             self._store.atomic_write_json(self._data_dir / "listings" / f"{complex_id}.json", {"listings": records})
-            _append_history(self._data_dir / "history" / f"{complex_id}.json", run_record, records, trade_baselines or {})
+            _append_history(
+                self._data_dir / "history" / f"{complex_id}.json",
+                run_payload,
+                records,
+                trade_baselines or {},
+            )
 
         notified_path = self._data_dir / "state" / "notified.json"
         notified_state = self._store.load_json(notified_path, {"notified": {}})
@@ -65,32 +72,33 @@ class LoopStateRepository:
         health_path = self._data_dir / "state" / "health.json"
         health_state = self._store.load_json(health_path, {"runs": []})
         runs = list(health_state.get("runs", []))
-        runs.append(run_record)
+        runs.append(run_payload)
         health_state["failure_streak"] = 0
         health_state["health_alert_eligible"] = False
-        health_state["latest"] = run_record
-        health_state["last_success_at"] = run_record["finished_at"]
-        health_state["last_success_run_id"] = run_record["run_id"]
+        health_state["latest"] = run_payload
+        health_state["last_success_at"] = run_payload["finished_at"]
+        health_state["last_success_run_id"] = run_payload["run_id"]
         health_state["runs"] = runs[-10:]
         self._store.atomic_write_json(health_path, health_state)
 
-        _write_urgent_feed(self._data_dir / "state" / "urgent-feed.json", run_record, candidates)
-        _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_record["finished_at"])
-        write_criteria_suggestions(logs_dir=logs_dir, data_dir=self._data_dir, generated_at=run_record["finished_at"])
+        _write_urgent_feed(self._data_dir / "state" / "urgent-feed.json", run_payload, candidates)
+        _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_payload["finished_at"])
+        write_criteria_suggestions(logs_dir=logs_dir, data_dir=self._data_dir, generated_at=run_payload["finished_at"])
 
     def write_failure_health(
         self,
         run_record: dict[str, Any],
         diagnostics: dict[str, Any] | None = None,
     ) -> None:
+        run_payload = RunRecord.from_dict(run_record).to_dict()
         health_path = self._data_dir / "state" / "health.json"
         health_state = self._store.load_json(health_path, {"runs": []})
         runs = list(health_state.get("runs", []))
-        runs.append(run_record)
+        runs.append(run_payload)
         failure_streak = int(health_state.get("failure_streak", 0)) + 1
         health_state["failure_streak"] = failure_streak
         health_state["health_alert_eligible"] = failure_streak >= HEALTH_ALERT_FAILURE_STREAK
-        health_state["latest"] = run_record
+        health_state["latest"] = run_payload
         health_state["runs"] = runs[-10:]
         self._store.atomic_write_json(health_path, health_state)
         if diagnostics is not None:
@@ -217,12 +225,13 @@ def _redact_text(text: str) -> str:
 
 
 def _write_urgent_feed(path: Path, run_record: dict[str, Any], candidates: list[Candidate]) -> None:
+    run = RunRecord.from_dict(run_record)
     planned_keys = {candidate.listing_key for candidate in approved_candidates(candidates)}
     payload = {
-        "run_id": run_record["run_id"],
-        "generated_at": run_record["finished_at"],
+        "run_id": run.run_id,
+        "generated_at": run.finished_at,
         "alert_limit": 5,
-        "alert_cap_overflow": run_record.get("counts", {}).get("alert_cap_overflow", 0),
+        "alert_cap_overflow": run.counts.get("alert_cap_overflow", 0),
         "items": [_feed_item(candidate, candidate.listing_key in planned_keys) for candidate in candidates],
     }
     atomic_write_json(path, payload)
@@ -230,20 +239,20 @@ def _write_urgent_feed(path: Path, run_record: dict[str, Any], candidates: list[
 
 def _feed_item(candidate: Candidate, alert_planned: bool) -> dict[str, Any]:
     listing = candidate.listing
-    return {
-        "complex_id": candidate.complex_id,
-        "listing_key": candidate.listing_key,
-        "decision": candidate.decision,
-        "reason": candidate.reason,
-        "price_krw": candidate.price_krw,
-        "alert_planned": alert_planned,
-        "title": listing.get("title"),
-        "description": listing.get("description"),
-        "building": listing.get("building"),
-        "floor": listing.get("floor"),
-        "area_m2": listing.get("area_m2"),
-        "link": listing.get("link"),
-    }
+    return FeedItem(
+        complex_id=candidate.complex_id,
+        listing_key=candidate.listing_key,
+        decision=candidate.decision,
+        reason=candidate.reason,
+        price_krw=candidate.price_krw,
+        alert_planned=alert_planned,
+        title=listing.get("title"),
+        description=listing.get("description"),
+        building=listing.get("building"),
+        floor=listing.get("floor"),
+        area_m2=listing.get("area_m2"),
+        link=listing.get("link"),
+    ).to_dict()
 
 
 def _append_criteria_log(

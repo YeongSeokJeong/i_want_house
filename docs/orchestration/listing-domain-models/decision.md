@@ -10,6 +10,7 @@
 | 1 | PLAN | Planning | Split domain model work into conversion, analyzer/validator adoption, and persistence/feed adoption | Keeps cross-module refactor reviewable and preserves JSON compatibility after each feature | Enables incremental verification and feature-scoped commits | 2026-06-20 |
 | 1 | PLAN | Planning | Use independent worktree `D:/git/i_want_house_listing-domain-models` and branch `task/listing-domain-models` | Source-code lifecycle requires implementation outside the primary checkout | Keeps unattended backlog work isolated from the main worktree | 2026-06-20 |
 | 1 | F-002 | Analyzer and validator adoption | Normalize listing records through `NormalizedListing` at analyzer and validator boundaries | Moves field coercion and required-field checks into the shared model layer without changing public dict output | Reduces duplicated validation logic before persistence adoption | 2026-06-20 |
+| 1 | F-003 | Persistence and feed adoption | Normalize run records and feed items through model helpers before JSON persistence | Keeps state-file writers tied to explicit contracts while preserving validate-before-replace writes | Makes health/feed schema drift easier to catch in tests | 2026-06-20 |
 
 ## Session 1
 - Feature ID: F-001
@@ -38,3 +39,16 @@
   - Analyzer now raises model validation errors if called with unvalidated records; current production flow validates first, and tests cover the service boundary.
 - Follow-up Notes:
   - F-003 should use `RunRecord` and `FeedItem` in persistence while preserving the exact JSON fields consumed by the dashboard.
+
+## Session 1 F-003
+- Feature ID: F-003
+- Feature: Persistence and feed adoption
+- Decisions:
+  - `LoopStateRepository` converts incoming run records through `RunRecord` before writing health/history/feed state.
+  - Urgent feed item projection now builds through `FeedItem` before atomic JSON write.
+- Alternatives Considered:
+  - Convert all listing snapshots in persistence immediately: rejected because analyzer/validator already own listing normalization for this task and snapshot shape should stay provider-compatible.
+- Risks Introduced:
+  - Count values are coerced to integers in persisted `health.latest.counts`; this matches existing runtime intent and is covered by tests.
+- Follow-up Notes:
+  - Closeout should update durable architecture notes and close `BL-20260618-006`.

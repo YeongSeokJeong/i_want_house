@@ -20,15 +20,16 @@
 | Feature ID | Feature Name | Status | Last Session | Commit | Updated |
 |------------|--------------|--------|--------------|--------|---------|
 | F-001 | Domain conversion layer | DONE | 1 | a4b0698 | 2026-06-20 |
-| F-002 | Analyzer and validator adoption | DONE | 1 | - | 2026-06-20 |
-| F-003 | Persistence and feed adoption | TODO | - | - | 2026-06-20 |
+| F-002 | Analyzer and validator adoption | DONE | 1 | 55feb20 | 2026-06-20 |
+| F-003 | Persistence and feed adoption | DONE | 1 | - | 2026-06-20 |
 
 ## Session Log
 | Session | Feature ID | Feature | Status | Commit | Date |
 |---------|------------|---------|--------|--------|------|
 | 1 | PLAN | Planning | Done | - | 2026-06-20 |
 | 1 | F-001 | Domain conversion layer | Done | a4b0698 | 2026-06-20 |
-| 1 | F-002 | Analyzer and validator adoption | Done | - | 2026-06-20 |
+| 1 | F-002 | Analyzer and validator adoption | Done | 55feb20 | 2026-06-20 |
+| 1 | F-003 | Persistence and feed adoption | Done | - | 2026-06-20 |
 
 ## Verification Evidence
 | Session | Feature ID | Command | Result | Date |
@@ -37,11 +38,13 @@
 | 1 | F-001 | `python -m unittest discover -s tests -v` | PASS: 100 tests | 2026-06-20 |
 | 1 | F-002 | `python -m unittest tests.test_oop_services tests.test_candidate_quality tests.test_reliability -v` | PASS: 36 tests | 2026-06-20 |
 | 1 | F-002 | `python -m unittest discover -s tests -v` | PASS: 102 tests | 2026-06-20 |
+| 1 | F-003 | `python -m unittest tests.test_oop_services tests.test_loop tests.test_candidate_quality tests.test_reliability -v` | PASS: 43 tests | 2026-06-20 |
+| 1 | F-003 | `python -m unittest discover -s tests -v` | PASS: 102 tests | 2026-06-20 |
 
 ## Next Session Instructions
-- Next Feature ID: F-003
-- Next Feature: Persistence and feed adoption
-- Description: Use typed run/feed conversion for persisted health and urgent-feed projections while keeping JSON output schema-compatible.
+- Next Feature ID: DONE
+- Next Feature: Closeout
+- Description: All planned feature work is complete. Run `/large-task-orchestrator done listing-domain-models` closeout and record PR details.
 - Key Files: `src/jeonseloop/models.py`, `tests/`, `src/jeonseloop/analyzer.py`, `src/jeonseloop/validator.py`, `src/jeonseloop/persistence.py`
 - Dependencies Ready: yes; worktree and task branch are recorded.
 - Known Issues: None.

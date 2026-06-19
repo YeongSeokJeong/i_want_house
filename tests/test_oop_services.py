@@ -165,12 +165,21 @@ class OopServiceTests(unittest.TestCase):
                 "finished_at": "2026-06-13T00:00:02+00:00",
                 "status": "success",
                 "reason": "completed",
-                "counts": {},
+                "counts": {"alert_cap_overflow": "0"},
             }
             LoopStateRepository(data_dir=data_dir, logs_dir=logs_dir).persist_cycle(
                 run_record=run_record,
                 records_by_complex={"sample-apt": [listing()]},
-                candidates=[],
+                candidates=[
+                    Candidate(
+                        complex_id="sample-apt",
+                        listing_key="listing-1",
+                        price_krw=830000000,
+                        decision="reject",
+                        reason="above_target_price",
+                        listing=listing(),
+                    )
+                ],
                 invalid_records=[],
                 notified_updates={},
                 trade_baselines=baselines,
@@ -178,10 +187,16 @@ class OopServiceTests(unittest.TestCase):
 
             health = json.loads((data_dir / "state" / "health.json").read_text(encoding="utf-8"))
             history = json.loads((data_dir / "history" / "sample-apt.json").read_text(encoding="utf-8"))
+            feed = json.loads((data_dir / "state" / "urgent-feed.json").read_text(encoding="utf-8"))
 
         self.assertEqual(baselines, {"sample-apt": 925000000})
         self.assertEqual(health["latest"]["run_id"], "run-1")
+        self.assertEqual(health["latest"]["counts"]["alert_cap_overflow"], 0)
         self.assertEqual(history["history"][0]["recent_trade_price_krw"], 925000000)
+        self.assertEqual(feed["run_id"], "run-1")
+        self.assertEqual(feed["items"][0]["listing_key"], "listing-1")
+        self.assertFalse(feed["items"][0]["alert_planned"])
+        self.assertEqual(feed["items"][0]["area_m2"], 84.9)
 
     def test_loop_coordinator_runs_with_explicit_service_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
