@@ -4,12 +4,12 @@ import argparse
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import json
-import os
 from pathlib import Path
 import re
 import sys
 from typing import Any
 
+from .backlog_store import BacklogItem, BacklogStore
 from .persistence import JsonStateStore
 from .telegram_updates import (
     extract_updates as _extract_updates,
@@ -60,8 +60,9 @@ def run_intake(options: IntakeOptions) -> dict[str, Any]:
     accepted: list[dict[str, Any]] = []
     clarification_needed: list[dict[str, Any]] = []
     skipped = 0
-    next_id = _next_backlog_id(options.backlog_path, today)
-    backlog_rows: list[str] = []
+    backlog_store = BacklogStore(options.backlog_path)
+    next_id = backlog_store.next_sequence(today)
+    backlog_items: list[BacklogItem] = []
 
     for update in updates:
         update_id = _update_id(update)
@@ -81,8 +82,18 @@ def run_intake(options: IntakeOptions) -> dict[str, Any]:
         if triage["status"] == "accepted":
             backlog_id = f"BL-{today.replace('-', '')}-{next_id:03d}"
             next_id += 1
-            row = _backlog_row(backlog_id, triage, message, update_id, today)
-            backlog_rows.append(row)
+            context = f"Telegram update_id={update_id} \uc790\ub3d9 \uc218\uc9d1. \uc6d0\ubb38 \uc694\uc57d: {triage['excerpt']}"
+            backlog_items.append(
+                BacklogItem(
+                    backlog_id=backlog_id,
+                    status="Todo",
+                    route=triage["route"],
+                    task=triage["task"],
+                    context=context,
+                    created=today,
+                    artifact=triage["artifact"],
+                )
+            )
             accepted.append(
                 {
                     "update_id": update_id,
@@ -124,8 +135,8 @@ def run_intake(options: IntakeOptions) -> dict[str, Any]:
     }
 
     if not options.dry_run:
-        if backlog_rows:
-            _append_backlog_rows(options.backlog_path, backlog_rows)
+        if backlog_items:
+            backlog_store.append_items(backlog_items)
         store.atomic_write_json(options.state_path, result_state)
     else:
         result["dry_run"] = True
@@ -307,72 +318,8 @@ def _task_from_excerpt(excerpt: str) -> str:
     return f"Telegram 요청 처리: {compact}"
 
 
-def _backlog_row(backlog_id: str, triage: dict[str, Any], message: dict[str, Any], update_id: int, today: str) -> str:
-    context = f"Telegram update_id={update_id} 자동 수집. 원문 요약: {triage['excerpt']}"
-    return (
-        f"| {backlog_id} | Todo | {triage['route']} | {_cell(triage['task'])} | {_cell(context)} | "
-        f"{today} | - | {triage['artifact']} | - |"
-    )
-
-
-def _append_backlog_rows(path: Path, rows: list[str]) -> None:
-    if not rows:
-        return
-    text = path.read_text(encoding="utf-8") if path.exists() else _empty_backlog_text()
-    lines = text.splitlines()
-    if not any(line.startswith("| ID | Status | Route |") for line in lines):
-        raise ValueError("backlog table header was not found")
-    insert_at = _find_insert_index(lines)
-    updated = lines[:insert_at] + rows + lines[insert_at:]
-    new_text = "\n".join(updated).rstrip() + "\n"
-    _validate_backlog_text(new_text)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_name(f".{path.name}.tmp")
-    temp.write_text(new_text, encoding="utf-8")
-    os.replace(temp, path)
-
-
-def _find_insert_index(lines: list[str]) -> int:
-    for index, line in enumerate(lines):
-        if line.startswith("| BL-"):
-            return index
-    return len(lines)
-
-
-def _validate_backlog_text(text: str) -> None:
-    ids = re.findall(r"\|\s*(BL-\d{8}-\d{3})\s*\|", text)
-    if len(ids) != len(set(ids)):
-        raise ValueError("duplicate backlog IDs detected")
-
-
-def _next_backlog_id(path: Path, today: str) -> int:
-    if not path.exists():
-        return 1
-    prefix = f"BL-{today.replace('-', '')}-"
-    max_seen = 0
-    for match in re.finditer(r"BL-\d{8}-(\d{3})", path.read_text(encoding="utf-8")):
-        full = match.group(0)
-        if full.startswith(prefix):
-            max_seen = max(max_seen, int(match.group(1)))
-    return max_seen + 1
-
-
-def _cell(value: str) -> str:
-    return value.replace("|", "\\|").replace("\n", " ").strip()
-
-
 def _truncate(text: str, max_length: int) -> str:
     return text if len(text) <= max_length else text[: max_length - 1].rstrip() + "..."
-
-
-def _empty_backlog_text() -> str:
-    return (
-        "# Backlog\n\n"
-        "> Last updated: 2026-06-17\n\n"
-        "## Items\n"
-        "| ID | Status | Route | Task | Context | Created | Completed | Artifact | Result |\n"
-        "|---|---|---|---|---|---|---|---|---|\n"
-    )
 
 
 def _now() -> str:

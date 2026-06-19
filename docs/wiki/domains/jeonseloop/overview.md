@@ -5,6 +5,7 @@
 - 이미 처리한 `update_id`는 `data/state/telegram-intake.json`에 기록해 재실행 시 같은 요청을 다시 `docs/backlog.md`에 추가하지 않는다.
 - 충분히 구체적인 요청은 `docs/backlog.md`에 `Todo` 행으로 추가하고, 대상이나 완료 기준이 부족한 요청은 `clarification_needed` 초안으로 상태 파일에 남긴다.
 - `.github/workflows/telegram-backlog-intake.yml`은 raw Telegram update 파일을 커밋하지 않고, 감사 가능한 intake 결과 상태와 백로그 변경만 커밋 대상으로 삼는다.
+- `docs/backlog.md` Markdown table 조작은 `src/jeonseloop/backlog_store.py`가 담당하며, Telegram intake는 triage 결과를 `BacklogItem`으로 넘긴다. 중복 ID와 table header를 검증한 뒤 임시 파일을 `os.replace`로 교체해 실패 시 기존 backlog 파일을 보존한다.
 
 ## Telegram 운영 제안
 - 운영 자동화는 `/ops` 접두사가 있는 allowlist 명령만 처리하며, 자유문 요청은 운영 설정 변경으로 추정하지 않는다.
