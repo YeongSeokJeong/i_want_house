@@ -17,7 +17,7 @@
 ## Related Backlog Items
 | Backlog ID | Route | Status | Relationship |
 |------------|-------|--------|--------------|
-| BL-20260618-005 | source-code | Doing | Parent task item for this orchestration |
+| BL-20260618-005 | source-code | Done | Parent task item for this orchestration |
 
 ## Feature Catalog
 | Feature ID | Feature Name | Goal | Depends On | Complexity | Owner |

@@ -24,3 +24,16 @@
   - The Markdown parser remains intentionally narrow and tied to the existing table shape.
 - Follow-up Notes:
   - A future backlog-management quality gate can reuse this store if it needs source-code access to backlog rows.
+
+## Session 1 Closeout
+- Feature ID: F-001
+- Feature: Backlog markdown store
+- Decisions:
+  - Close BL-20260618-005 because `BacklogStore` now owns backlog row creation, next ID allocation, duplicate validation, insertion, and validate-before-replace writes.
+  - Record the module boundary in `docs/wiki/domains/jeonseloop/overview.md` because Telegram backlog intake is durable domain/operation knowledge.
+- Alternatives Considered:
+  - No wiki update: rejected because prior Telegram intake docs already describe module boundaries and safety rules.
+- Risks Introduced:
+  - None beyond the intentionally narrow Markdown table parser already recorded in architecture notes.
+- Follow-up Notes:
+  - Broader backlog lifecycle quality gates remain BL-20260618-008.
