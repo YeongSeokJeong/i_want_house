@@ -13,6 +13,13 @@ from jeonseloop.loop import LoopCoordinator, LoopOptions
 from jeonseloop.notifier import NotificationService
 from jeonseloop.persistence import JsonStateStore, LoopStateRepository
 from jeonseloop.review import CandidateReviewService, LlmReviewConfig
+from jeonseloop.state_repositories import (
+    HealthStateRepository,
+    HistoryRepository,
+    ListingSnapshotRepository,
+    NotifiedStateRepository,
+    UrgentFeedRepository,
+)
 from jeonseloop.suggestions import CriteriaSuggestionService
 from jeonseloop.trades import TradeBaselineRepository
 from jeonseloop.validator import ListingValidator
@@ -197,6 +204,52 @@ class OopServiceTests(unittest.TestCase):
         self.assertEqual(feed["items"][0]["listing_key"], "listing-1")
         self.assertFalse(feed["items"][0]["alert_planned"])
         self.assertEqual(feed["items"][0]["area_m2"], 84.9)
+
+    def test_state_repositories_split_file_targets_without_changing_payload_shapes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "data"
+            store = JsonStateStore()
+            run_record = {
+                "run_id": "run-1",
+                "started_at": "2026-06-13T00:00:00+00:00",
+                "finished_at": "2026-06-13T00:00:02+00:00",
+                "status": "success",
+                "reason": "completed",
+                "counts": {"alert_cap_overflow": 0},
+            }
+            candidate = Candidate(
+                complex_id="sample-apt",
+                listing_key="listing-1",
+                price_krw=830000000,
+                decision="approve",
+                reason="target_price",
+                listing=listing(),
+            )
+
+            ListingSnapshotRepository(data_dir, store=store).write_all({"sample-apt": [listing()]})
+            HistoryRepository(data_dir, store=store).append_for_records(
+                run_record,
+                {"sample-apt": [listing()]},
+                {"sample-apt": 925000000},
+            )
+            NotifiedStateRepository(data_dir, store=store).merge_updates(
+                {"listing-1": {"price_krw": 830000000, "complex_id": "sample-apt"}}
+            )
+            HealthStateRepository(data_dir, store=store).record_success(run_record)
+            UrgentFeedRepository(data_dir, store=store).write(run_record, [candidate])
+
+            listings = json.loads((data_dir / "listings" / "sample-apt.json").read_text(encoding="utf-8"))
+            history = json.loads((data_dir / "history" / "sample-apt.json").read_text(encoding="utf-8"))
+            notified = json.loads((data_dir / "state" / "notified.json").read_text(encoding="utf-8"))
+            health = json.loads((data_dir / "state" / "health.json").read_text(encoding="utf-8"))
+            feed = json.loads((data_dir / "state" / "urgent-feed.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(listings["listings"][0]["listing_id"], "listing-1")
+        self.assertEqual(history["history"][0]["recent_trade_price_krw"], 925000000)
+        self.assertEqual(notified["notified"]["listing-1"]["complex_id"], "sample-apt")
+        self.assertEqual(health["latest"]["run_id"], "run-1")
+        self.assertTrue(feed["items"][0]["alert_planned"])
 
     def test_loop_coordinator_runs_with_explicit_service_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
