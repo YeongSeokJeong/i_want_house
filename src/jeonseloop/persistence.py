@@ -1,32 +1,22 @@
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-import re
 from typing import Any
 
-from .analyzer import Candidate, approved_candidates
-from .models import FeedItem, RunRecord
-from .suggestions import write_criteria_suggestions
+from .analyzer import Candidate
+from .models import RunRecord
+from .state_repositories import (
+    CollectorDiagnosticsRepository,
+    CriteriaRepository,
+    HealthStateRepository,
+    HistoryRepository,
+    JsonStateStore,
+    ListingSnapshotRepository,
+    NotifiedStateRepository,
+    UrgentFeedRepository,
+    sanitize_diagnostics,
+)
 from .validator import ValidationIssue
-
-HEALTH_ALERT_FAILURE_STREAK = 3
-
-
-class JsonStateStore:
-    def load_json(self, path: Path, default: Any) -> Any:
-        if not path.exists():
-            return default
-        return json.loads(path.read_text(encoding="utf-8"))
-
-    def atomic_write_json(self, path: Path, payload: Any) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-        json.loads(text)
-        temp = path.with_name(f".{path.name}.tmp")
-        temp.write_text(text, encoding="utf-8")
-        os.replace(temp, path)
 
 
 class LoopStateRepository:
@@ -40,6 +30,12 @@ class LoopStateRepository:
         self._data_dir = data_dir
         self._logs_dir = logs_dir
         self._store = store if store is not None else JsonStateStore()
+        self._listings = ListingSnapshotRepository(data_dir, store=self._store)
+        self._history = HistoryRepository(data_dir, store=self._store)
+        self._notified = NotifiedStateRepository(data_dir, store=self._store)
+        self._health = HealthStateRepository(data_dir, store=self._store)
+        self._diagnostics = CollectorDiagnosticsRepository(data_dir, store=self._store)
+        self._feed = UrgentFeedRepository(data_dir, store=self._store)
 
     def persist_cycle(
         self,
@@ -53,37 +49,15 @@ class LoopStateRepository:
     ) -> None:
         run_payload = RunRecord.from_dict(run_record).to_dict()
         logs_dir = self._require_logs_dir()
-        for complex_id, records in records_by_complex.items():
-            self._store.atomic_write_json(self._data_dir / "listings" / f"{complex_id}.json", {"listings": records})
-            _append_history(
-                self._data_dir / "history" / f"{complex_id}.json",
-                run_payload,
-                records,
-                trade_baselines or {},
-            )
+        criteria = CriteriaRepository(data_dir=self._data_dir, logs_dir=logs_dir)
 
-        notified_path = self._data_dir / "state" / "notified.json"
-        notified_state = self._store.load_json(notified_path, {"notified": {}})
-        notified_state.setdefault("notified", {})
-        if notified_updates:
-            notified_state.setdefault("notified", {}).update(notified_updates)
-        self._store.atomic_write_json(notified_path, notified_state)
-
-        health_path = self._data_dir / "state" / "health.json"
-        health_state = self._store.load_json(health_path, {"runs": []})
-        runs = list(health_state.get("runs", []))
-        runs.append(run_payload)
-        health_state["failure_streak"] = 0
-        health_state["health_alert_eligible"] = False
-        health_state["latest"] = run_payload
-        health_state["last_success_at"] = run_payload["finished_at"]
-        health_state["last_success_run_id"] = run_payload["run_id"]
-        health_state["runs"] = runs[-10:]
-        self._store.atomic_write_json(health_path, health_state)
-
-        _write_urgent_feed(self._data_dir / "state" / "urgent-feed.json", run_payload, candidates)
-        _append_criteria_log(logs_dir / "criteria-log.md", candidates, invalid_records, run_payload["finished_at"])
-        write_criteria_suggestions(logs_dir=logs_dir, data_dir=self._data_dir, generated_at=run_payload["finished_at"])
+        self._listings.write_all(records_by_complex)
+        self._history.append_for_records(run_payload, records_by_complex, trade_baselines or {})
+        self._notified.merge_updates(notified_updates)
+        self._health.record_success(run_payload)
+        self._feed.write(run_payload, candidates)
+        criteria.append_log(candidates, invalid_records, run_payload["finished_at"])
+        criteria.write_suggestions(generated_at=run_payload["finished_at"])
 
     def write_failure_health(
         self,
@@ -91,43 +65,12 @@ class LoopStateRepository:
         diagnostics: dict[str, Any] | None = None,
     ) -> None:
         run_payload = RunRecord.from_dict(run_record).to_dict()
-        health_path = self._data_dir / "state" / "health.json"
-        health_state = self._store.load_json(health_path, {"runs": []})
-        runs = list(health_state.get("runs", []))
-        runs.append(run_payload)
-        failure_streak = int(health_state.get("failure_streak", 0)) + 1
-        health_state["failure_streak"] = failure_streak
-        health_state["health_alert_eligible"] = failure_streak >= HEALTH_ALERT_FAILURE_STREAK
-        health_state["latest"] = run_payload
-        health_state["runs"] = runs[-10:]
-        self._store.atomic_write_json(health_path, health_state)
+        self._health.record_failure(run_payload)
         if diagnostics is not None:
-            self._store.atomic_write_json(
-                self._data_dir / "state" / "collector-diagnostics.json",
-                sanitize_diagnostics(diagnostics),
-            )
+            self._diagnostics.write(diagnostics)
 
     def load_previous_average_prices(self, complex_ids: list[str] | tuple[str, ...]) -> dict[str, int]:
-        averages: dict[str, int] = {}
-        for complex_id in complex_ids:
-            history = self._store.load_json(self._data_dir / "history" / f"{complex_id}.json", {"history": []})
-            entries = history.get("history", []) if isinstance(history, dict) else []
-            if not isinstance(entries, list):
-                continue
-            for entry in reversed(entries):
-                if not isinstance(entry, dict):
-                    continue
-                value = entry.get("average_price_krw")
-                if value is None:
-                    continue
-                try:
-                    average = int(value)
-                except (TypeError, ValueError):
-                    continue
-                if average > 0:
-                    averages[complex_id] = average
-                    break
-        return averages
+        return self._history.load_previous_average_prices(complex_ids)
 
     def _require_logs_dir(self) -> Path:
         if self._logs_dir is None:
@@ -182,77 +125,11 @@ def _append_history(
     records: list[dict[str, Any]],
     trade_baselines: dict[str, int],
 ) -> None:
-    history = load_json(path, {"history": []})
-    prices = [int(record["price_krw"]) for record in records]
-    entry = {
-        "run_id": run_record["run_id"],
-        "finished_at": run_record["finished_at"],
-        "listing_count": len(records),
-        "min_price_krw": min(prices) if prices else None,
-        "average_price_krw": int(sum(prices) / len(prices)) if prices else None,
-        "recent_trade_price_krw": trade_baselines.get(path.stem),
-    }
-    history.setdefault("history", []).append(entry)
-    atomic_write_json(path, history)
-
-
-def sanitize_diagnostics(payload: dict[str, Any]) -> dict[str, Any]:
-    return _sanitize_value(payload)
-
-
-def _sanitize_value(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {
-            str(key): "[redacted]" if _is_sensitive_key(str(key)) else _sanitize_value(item)
-            for key, item in value.items()
-        }
-    if isinstance(value, list):
-        return [_sanitize_value(item) for item in value]
-    if isinstance(value, str):
-        return _redact_text(value)[:1000]
-    return value
-
-
-def _is_sensitive_key(key: str) -> bool:
-    normalized = key.lower()
-    return any(token in normalized for token in ("token", "secret", "api_key", "chat_id", "authorization"))
-
-
-def _redact_text(text: str) -> str:
-    redacted = re.sub(r"Bearer\s+[A-Za-z0-9._~+/=-]+", "Bearer [redacted]", text)
-    redacted = re.sub(r"(token|api[_-]?key|chat[_-]?id)=([^&\s]+)", r"\1=[redacted]", redacted, flags=re.I)
-    return redacted
+    HistoryRepository(path.parents[1]).append(path, run_record, records, trade_baselines)
 
 
 def _write_urgent_feed(path: Path, run_record: dict[str, Any], candidates: list[Candidate]) -> None:
-    run = RunRecord.from_dict(run_record)
-    planned_keys = {candidate.listing_key for candidate in approved_candidates(candidates)}
-    payload = {
-        "run_id": run.run_id,
-        "generated_at": run.finished_at,
-        "alert_limit": 5,
-        "alert_cap_overflow": run.counts.get("alert_cap_overflow", 0),
-        "items": [_feed_item(candidate, candidate.listing_key in planned_keys) for candidate in candidates],
-    }
-    atomic_write_json(path, payload)
-
-
-def _feed_item(candidate: Candidate, alert_planned: bool) -> dict[str, Any]:
-    listing = candidate.listing
-    return FeedItem(
-        complex_id=candidate.complex_id,
-        listing_key=candidate.listing_key,
-        decision=candidate.decision,
-        reason=candidate.reason,
-        price_krw=candidate.price_krw,
-        alert_planned=alert_planned,
-        title=listing.get("title"),
-        description=listing.get("description"),
-        building=listing.get("building"),
-        floor=listing.get("floor"),
-        area_m2=listing.get("area_m2"),
-        link=listing.get("link"),
-    ).to_dict()
+    UrgentFeedRepository(path.parents[1]).write(run_record, candidates)
 
 
 def _append_criteria_log(
@@ -261,27 +138,8 @@ def _append_criteria_log(
     invalid_records: list[ValidationIssue],
     finished_at: str,
 ) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        lines = path.read_text(encoding="utf-8").splitlines()
-    else:
-        lines = [
-            "# Criteria Log",
-            "",
-            "| time | complex_id | listing_key | decision | reason | price_krw |",
-            "|---|---|---|---|---|---|",
-        ]
-
-    for candidate in candidates:
-        lines.append(
-            f"| {finished_at} | {candidate.complex_id} | {candidate.listing_key} | "
-            f"{candidate.decision} | {candidate.reason} | {candidate.price_krw} |"
-        )
-    for issue in invalid_records:
-        lines.append(
-            f"| {finished_at} | {issue.complex_id or ''} | invalid_record | quarantine | {issue.reason} |  |"
-        )
-
-    temp = path.with_name(f".{path.name}.tmp")
-    temp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    os.replace(temp, path)
+    CriteriaRepository(data_dir=path.parents[1] / "data", logs_dir=path.parent).append_log(
+        candidates,
+        invalid_records,
+        finished_at,
+    )
