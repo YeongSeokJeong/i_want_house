@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .models import NormalizedListing
 from .validator import listing_key
 from .watchlist import WatchTarget
 
@@ -41,11 +42,12 @@ class CandidateAnalyzer:
 
         for complex_id, records in records_by_complex.items():
             target = targets_by_id[complex_id]
+            normalized_records = [NormalizedListing.from_dict(record).to_dict() for record in records]
             baseline_price = baselines.get(complex_id)
             baseline_limit = (
                 int(baseline_price * (1 - target.urgent_discount_ratio)) if baseline_price is not None else None
             )
-            for record, duplicate_of in _dedupe(records):
+            for record, duplicate_of in _dedupe(normalized_records):
                 listing = _candidate_listing(record, target, baseline_price, baseline_limit)
                 key = listing_key(record)
                 price = int(record["price_krw"])
