@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import json
-import os
 from pathlib import Path
 from typing import Any, Callable
 from uuid import uuid4
 
 from .analyzer import CandidateAnalyzer
 from .collector import ListingCollector, ListingSourceNotConfiguredError, TransientListingFetchError
+from .diagnostics import LoopDiagnostics
 from .notifier import NotificationService
 from .persistence import JsonStateStore, LoopStateRepository
 from .review import CandidateReviewService
 from .sources import SourceFetchError, listing_fetcher_from_env, trade_fetcher_from_env
 from .trades import TradeBaselineRepository
 from .validator import ListingValidator
-from .watchlist import Watchlist, WatchTarget, WatchlistError, load_watchlist
+from .watchlist import Watchlist, WatchlistError, load_watchlist
 
 
 @dataclass(frozen=True)
@@ -48,6 +47,7 @@ class LoopCoordinator:
         trade_repository: TradeBaselineRepository | None = None,
         review_service: CandidateReviewService | None = None,
         notification_service: NotificationService | None = None,
+        diagnostics: LoopDiagnostics | None = None,
         clock: Clock | None = None,
         run_id_factory: RunIdFactory | None = None,
     ) -> None:
@@ -61,6 +61,7 @@ class LoopCoordinator:
         self._trade_repository = trade_repository
         self._review_service = review_service if review_service is not None else CandidateReviewService()
         self._notification_service = notification_service if notification_service is not None else NotificationService()
+        self._diagnostics = diagnostics if diagnostics is not None else LoopDiagnostics()
         self._clock = clock if clock is not None else _now
         self._run_id_factory = run_id_factory if run_id_factory is not None else lambda: str(uuid4())
 
@@ -177,7 +178,7 @@ class LoopCoordinator:
                 "alert_cap_overflow": alert_cap_overflow,
             },
         )
-        run_record["listing_diagnostics"] = _listing_diagnostics(
+        run_record["listing_diagnostics"] = self._diagnostics.listing_diagnostics(
             watchlist,
             raw_records,
             fixture_path=self._options.fixture_path,
@@ -285,7 +286,7 @@ class LoopCoordinator:
         if not self._options.dry_run:
             state_repository.write_failure_health(
                 run_record,
-                diagnostics=_collector_diagnostics(run_record, reason, error, target_complex_ids),
+                diagnostics=self._diagnostics.collector_failure(run_record, reason, error, target_complex_ids),
             )
         return run_record
 
@@ -300,118 +301,3 @@ def run_failure_health(options: LoopOptions, error: WatchlistError) -> dict[str,
 
 def _now() -> str:
     return datetime.now(tz=UTC).replace(microsecond=0).isoformat()
-
-
-def _collector_diagnostics(
-    run_record: dict[str, Any],
-    reason: str,
-    error: Exception,
-    target_complex_ids: tuple[str, ...],
-) -> dict[str, Any]:
-    source_kind = _listing_source_kind_for_diagnostics()
-    diagnostics: dict[str, Any] = {
-        "run_id": run_record["run_id"],
-        "generated_at": run_record["finished_at"],
-        "run_reason": reason,
-        "failure_stage": _failure_stage(reason),
-        "source_kind": source_kind,
-        "error_type": type(error).__name__,
-        "error": str(error),
-        "targets": [{"complex_id": complex_id} for complex_id in target_complex_ids],
-    }
-    if source_kind == "hogangnono" and "JEONSELOOP_HOGANGNONO_APT_HASH_MAP" in str(error):
-        missing_targets = _missing_hogangnono_mapping_targets(target_complex_ids)
-        if missing_targets:
-            diagnostics["required_env"] = "JEONSELOOP_HOGANGNONO_APT_HASH_MAP"
-            diagnostics["missing_mapping_targets"] = missing_targets
-    return diagnostics
-
-
-def _failure_stage(reason: str) -> str:
-    if reason in {"listing_source_unconfigured", "collector_failed"}:
-        return "listing_collection"
-    if reason == "trade_source_failed":
-        return "trade_collection"
-    return "runtime"
-
-
-def _listing_source_kind_for_diagnostics() -> str:
-    kind = os.environ.get("JEONSELOOP_LISTING_SOURCE_KIND", "").strip()
-    if kind:
-        return kind
-    if os.environ.get("JEONSELOOP_LISTING_SOURCE_URL", "").strip():
-        return "http-json"
-    return "unconfigured"
-
-
-def _listing_diagnostics(
-    watchlist: Watchlist,
-    records_by_complex: dict[str, list[dict[str, Any]]],
-    *,
-    fixture_path: Path | None,
-) -> dict[str, Any]:
-    source_kind = "fixture" if fixture_path is not None else _listing_source_kind_for_diagnostics()
-    return {
-        "source_kind": source_kind,
-        "targets": [
-            _target_listing_diagnostics(source_kind, target, records_by_complex.get(target.complex_id, []))
-            for target in watchlist.complexes
-        ],
-    }
-
-
-def _target_listing_diagnostics(
-    source_kind: str,
-    target: WatchTarget,
-    records: list[dict[str, Any]],
-) -> dict[str, Any]:
-    listing_count = len(records)
-    status = "listings_found" if listing_count else "empty_response"
-    diagnostic: dict[str, Any] = {
-        "complex_id": target.complex_id,
-        "source_kind": source_kind,
-        "listing_count": listing_count,
-        "status": status,
-    }
-
-    if source_kind == "hogangnono":
-        diagnostic["source_id"] = _hogangnono_apt_hash_for_diagnostics(target.complex_id)
-        diagnostic["trade_types"] = os.environ.get("JEONSELOOP_HOGANGNONO_TRADE_TYPES", "").strip() or "0"
-        diagnostic["diagnosis"] = (
-            "hogangnono_apt_items_empty" if listing_count == 0 else "hogangnono_apt_items_returned"
-        )
-    elif listing_count == 0:
-        diagnostic["diagnosis"] = f"{source_kind}_returned_no_records"
-
-    return diagnostic
-
-
-def _hogangnono_apt_hash_for_diagnostics(complex_id: str) -> str | None:
-    mapping = os.environ.get("JEONSELOOP_HOGANGNONO_APT_HASH_MAP", "").strip()
-    if mapping:
-        try:
-            parsed = json.loads(mapping)
-        except json.JSONDecodeError:
-            parsed = {}
-        if isinstance(parsed, dict):
-            mapped = str(parsed.get(complex_id, "")).strip()
-            if mapped:
-                return mapped
-    text = str(complex_id).strip()
-    if text and text.isalnum() and any(ch.isdigit() for ch in text):
-        return text
-    return None
-
-
-def _missing_hogangnono_mapping_targets(target_complex_ids: tuple[str, ...]) -> list[dict[str, str]]:
-    missing: list[dict[str, str]] = []
-    for complex_id in target_complex_ids:
-        if _hogangnono_apt_hash_for_diagnostics(complex_id):
-            continue
-        missing.append(
-            {
-                "complex_id": complex_id,
-                "example_entry": f'"{complex_id}":"<hogangnono_apt_hash>"',
-            }
-        )
-    return missing

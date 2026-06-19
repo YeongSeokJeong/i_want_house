@@ -9,12 +9,66 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from jeonseloop.analyzer import Candidate
+from jeonseloop.diagnostics import LoopDiagnostics
 from jeonseloop.loop import LoopOptions, run_cycle, run_failure_health
 from jeonseloop.notifier import format_candidate_message
-from jeonseloop.watchlist import WatchlistError
+from jeonseloop.watchlist import WatchTarget, Watchlist, WatchlistError
 
 
 class LoopTests(unittest.TestCase):
+    def test_diagnostics_service_projects_hogangnono_listing_targets(self) -> None:
+        diagnostics = LoopDiagnostics(
+            {
+                "JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono",
+                "JEONSELOOP_HOGANGNONO_APT_HASH_MAP": '{"sample-apt":"E152"}',
+                "JEONSELOOP_HOGANGNONO_TRADE_TYPES": "0",
+            }
+        )
+        watchlist = Watchlist(
+            version=1,
+            request_interval_seconds=2,
+            complexes=(WatchTarget("sample-apt", "Sample Apartment", 84.9, 840000000),),
+        )
+
+        result = diagnostics.listing_diagnostics(watchlist, {"sample-apt": []}, fixture_path=None)
+
+        self.assertEqual(result["source_kind"], "hogangnono")
+        self.assertEqual(
+            result["targets"],
+            [
+                {
+                    "complex_id": "sample-apt",
+                    "source_kind": "hogangnono",
+                    "listing_count": 0,
+                    "status": "empty_response",
+                    "source_id": "E152",
+                    "trade_types": "0",
+                    "diagnosis": "hogangnono_apt_items_empty",
+                }
+            ],
+        )
+
+    def test_diagnostics_service_projects_missing_hogangnono_mapping_failure(self) -> None:
+        diagnostics = LoopDiagnostics({"JEONSELOOP_LISTING_SOURCE_KIND": "hogangnono"})
+
+        result = diagnostics.collector_failure(
+            {
+                "run_id": "run-1",
+                "finished_at": "2026-06-19T00:00:00+00:00",
+            },
+            "collector_failed",
+            RuntimeError("missing JEONSELOOP_HOGANGNONO_APT_HASH_MAP"),
+            ("sample-apt", "E152"),
+        )
+
+        self.assertEqual(result["failure_stage"], "listing_collection")
+        self.assertEqual(result["source_kind"], "hogangnono")
+        self.assertEqual(result["required_env"], "JEONSELOOP_HOGANGNONO_APT_HASH_MAP")
+        self.assertEqual(
+            result["missing_mapping_targets"],
+            [{"complex_id": "sample-apt", "example_entry": '"sample-apt":"<hogangnono_apt_hash>"'}],
+        )
+
     def test_cycle_persists_health_and_listing_snapshot_without_sending(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
