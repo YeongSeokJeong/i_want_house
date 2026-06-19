@@ -56,6 +56,32 @@ class OopServiceTests(unittest.TestCase):
         self.assertEqual(len(valid["bulgwang-miseong"]), 1)
         self.assertEqual(invalid, [])
 
+    def test_listing_validator_keeps_existing_rejection_reasons_with_model_boundary(self) -> None:
+        valid, invalid = ListingValidator().validate(
+            {
+                "sample-apt": [
+                    {
+                        "listing_id": "bad",
+                        "complex_id": "sample-apt",
+                        "price_krw": "bad",
+                        "area_m2": 84.9,
+                        "floor": 9,
+                        "link": "https://example.invalid/bad",
+                    },
+                    {
+                        "listing_id": "missing",
+                        "complex_id": "sample-apt",
+                        "price_krw": 830000000,
+                        "area_m2": 84.9,
+                        "floor": 9,
+                    },
+                ]
+            }
+        )
+
+        self.assertEqual(valid, {"sample-apt": []})
+        self.assertEqual([issue.reason for issue in invalid], ["invalid_price_krw", "missing_link"])
+
     def test_candidate_analyzer_class_classifies_and_limits_approved_candidates(self) -> None:
         analyzer = CandidateAnalyzer()
         candidates = analyzer.classify(
@@ -69,6 +95,18 @@ class OopServiceTests(unittest.TestCase):
 
         self.assertEqual([candidate.listing_key for candidate in approved], ["cheap"])
         self.assertEqual(approved[0].reason, "target_price")
+
+    def test_candidate_analyzer_normalizes_listing_numbers_at_boundary(self) -> None:
+        analyzer = CandidateAnalyzer()
+        record = listing("cheap", price=820000000)
+        record["price_krw"] = "820000000"
+        record["area_m2"] = "84.9"
+
+        candidates = analyzer.classify((TARGET,), {"sample-apt": [record]}, {"notified": {}}, {})
+
+        self.assertEqual(candidates[0].price_krw, 820000000)
+        self.assertEqual(candidates[0].listing["price_krw"], 820000000)
+        self.assertEqual(candidates[0].listing["area_m2"], 84.9)
 
     def test_notification_review_and_suggestion_classes_keep_safe_defaults(self) -> None:
         candidate = Candidate(

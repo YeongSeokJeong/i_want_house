@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from .models import ModelValidationError, NormalizedListing
+
 
 @dataclass(frozen=True)
 class ValidationIssue:
@@ -58,24 +60,28 @@ def _validate_record(expected_complex_id: str, record: dict[str, Any]) -> str | 
     if record.get("complex_id") != expected_complex_id:
         return "complex_id_not_in_watchlist"
 
-    for field in ("price_krw", "area_m2", "floor", "link"):
-        if field not in record:
-            return f"missing_{field}"
+    try:
+        listing = NormalizedListing.from_dict(record)
+    except ModelValidationError as exc:
+        return _validation_reason(exc)
 
-    if _to_number(record["price_krw"]) <= 0:
+    if listing.price_krw <= 0:
         return "invalid_price_krw"
-    if _to_number(record["area_m2"]) <= 0:
+    if listing.area_m2 <= 0:
         return "invalid_area_m2"
-    if not str(record["link"]).strip():
-        return "missing_link"
 
     return None
 
 
-def _to_number(value: Any) -> float:
-    if isinstance(value, bool):
-        return 0
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0
+def _validation_reason(exc: ModelValidationError) -> str:
+    if exc.field_name in {"price_krw", "area_m2", "floor", "link"} and exc.reason == "is required":
+        return f"missing_{exc.field_name}"
+    if exc.field_name == "price_krw":
+        return "invalid_price_krw"
+    if exc.field_name == "area_m2":
+        return "invalid_area_m2"
+    if exc.field_name == "link":
+        return "missing_link"
+    if exc.field_name == "complex_id":
+        return "complex_id_not_in_watchlist"
+    return f"invalid_{exc.field_name}"
