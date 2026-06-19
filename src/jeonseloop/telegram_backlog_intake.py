@@ -9,9 +9,17 @@ from pathlib import Path
 import re
 import sys
 from typing import Any
-from urllib import parse, request
 
-from .persistence import JsonStateStore, sanitize_diagnostics
+from .persistence import JsonStateStore
+from .telegram_updates import (
+    extract_updates as _extract_updates,
+    fetch_telegram_updates,
+    load_env_with_file as _env_with_file,
+    merge_by_update_id as _merge_by_update_id,
+    message_from_update as _shared_message_from_update,
+    sanitize_text as _sanitize_text,
+    update_id as _update_id,
+)
 
 
 DEFAULT_UPDATES_PATH = Path("data/state/telegram-updates.json")
@@ -198,28 +206,6 @@ def triage_message(text: str) -> dict[str, Any]:
     }
 
 
-def fetch_telegram_updates(
-    *,
-    token: str,
-    offset: int | None,
-    limit: int,
-    poll_timeout: int,
-    timeout_seconds: int,
-) -> dict[str, Any]:
-    params: dict[str, Any] = {"limit": limit, "timeout": poll_timeout}
-    if offset is not None:
-        params["offset"] = offset
-    body = parse.urlencode(params).encode("utf-8")
-    req = request.Request(f"https://api.telegram.org/bot{token}/getUpdates", data=body, method="POST")
-    with request.urlopen(req, timeout=timeout_seconds) as response:  # pragma: no cover - live network path
-        payload = json.loads(response.read().decode("utf-8"))
-    return {
-        "generated_at": _now(),
-        "source": "telegram_getUpdates",
-        "updates": payload.get("result", []) if isinstance(payload, dict) else [],
-    }
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Triage saved Telegram updates into JeonseLoop backlog items.")
     parser.add_argument("--updates-path", default=str(DEFAULT_UPDATES_PATH))
@@ -281,36 +267,8 @@ def _load_state(store: JsonStateStore, path: Path) -> dict[str, Any]:
     return state
 
 
-def _extract_updates(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, dict) and isinstance(payload.get("updates"), list):
-        return [item for item in payload["updates"] if isinstance(item, dict)]
-    if isinstance(payload, dict) and isinstance(payload.get("result"), list):
-        return [item for item in payload["result"] if isinstance(item, dict)]
-    if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
-    return []
-
-
-def _update_id(update: dict[str, Any]) -> int | None:
-    try:
-        return int(update.get("update_id"))
-    except (TypeError, ValueError):
-        return None
-
-
 def _message_from_update(update: dict[str, Any], chat_id: str | None) -> dict[str, Any] | None:
-    for key in ("message", "edited_message", "channel_post"):
-        raw = update.get(key)
-        if not isinstance(raw, dict):
-            continue
-        text = raw.get("text")
-        if not isinstance(text, str) or not text.strip():
-            return None
-        chat = raw.get("chat") if isinstance(raw.get("chat"), dict) else {}
-        if chat_id and str(chat.get("id")) != str(chat_id):
-            return None
-        return {"text": text, "message_id": raw.get("message_id")}
-    return None
+    return _shared_message_from_update(update, chat_id, message_keys=("message", "edited_message", "channel_post"))
 
 
 def _classify_route(normalized: str) -> str:
@@ -399,27 +357,6 @@ def _next_backlog_id(path: Path, today: str) -> int:
     return max_seen + 1
 
 
-def _merge_by_update_id(existing: Any, new_items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    merged: dict[int, dict[str, Any]] = {}
-    if isinstance(existing, list):
-        for item in existing:
-            if not isinstance(item, dict) or "update_id" not in item:
-                continue
-            try:
-                merged[int(item["update_id"])] = item
-            except (TypeError, ValueError):
-                continue
-    for item in new_items:
-        merged[int(item["update_id"])] = item
-    return [merged[key] for key in sorted(merged)]
-
-
-def _sanitize_text(text: str) -> str:
-    sanitized = sanitize_diagnostics({"message": text}).get("message", "")
-    sanitized = " ".join(str(sanitized).split())
-    return _truncate(sanitized, 300)
-
-
 def _cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\n", " ").strip()
 
@@ -436,18 +373,6 @@ def _empty_backlog_text() -> str:
         "| ID | Status | Route | Task | Context | Created | Completed | Artifact | Result |\n"
         "|---|---|---|---|---|---|---|---|---|\n"
     )
-
-
-def _env_with_file(env_file: Path | None) -> dict[str, str]:
-    env = dict(os.environ)
-    if env_file and env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#") or "=" not in stripped:
-                continue
-            key, value = stripped.split("=", 1)
-            env.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-    return env
 
 
 def _now() -> str:
