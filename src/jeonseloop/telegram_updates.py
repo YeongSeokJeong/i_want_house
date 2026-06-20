@@ -78,7 +78,10 @@ def load_env_with_file(env_file: Path | None) -> dict[str, str]:
             if not stripped or stripped.startswith("#") or "=" not in stripped:
                 continue
             key, value = stripped.split("=", 1)
-            env.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+            normalized_key = key.strip()
+            normalized_value = value.strip().strip('"').strip("'")
+            if not env.get(normalized_key):
+                env[normalized_key] = normalized_value
     return env
 
 

@@ -78,6 +78,20 @@ class TelegramUpdatesTests(unittest.TestCase):
         self.assertEqual(env["TELEGRAM_BOT_TOKEN"], "existing-token")
         self.assertEqual(env["NEW_VALUE"], "from-file")
 
+    def test_load_env_with_file_uses_file_when_environment_value_is_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env_file = Path(temp_dir) / ".env"
+            env_file.write_text("TELEGRAM_BOT_TOKEN=file-token\n", encoding="utf-8")
+            original = dict(__import__("os").environ)
+            try:
+                __import__("os").environ["TELEGRAM_BOT_TOKEN"] = ""
+                env = load_env_with_file(env_file)
+            finally:
+                __import__("os").environ.clear()
+                __import__("os").environ.update(original)
+
+        self.assertEqual(env["TELEGRAM_BOT_TOKEN"], "file-token")
+
 
 if __name__ == "__main__":
     unittest.main()
