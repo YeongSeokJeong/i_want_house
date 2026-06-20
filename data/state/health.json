@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-06-17T12:52:55+00:00",
-  "last_success_run_id": "a0f59461-f019-4f62-a8a7-8c0c5099e210",
+  "last_success_at": "2026-06-20T03:52:06+00:00",
+  "last_success_run_id": "5f6405fb-af43-4596-a72b-15a06a3fe096",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -14,7 +14,7 @@
       "valid_listings": 1,
       "watched_complexes": 2
     },
-    "finished_at": "2026-06-17T12:52:55+00:00",
+    "finished_at": "2026-06-20T03:52:06+00:00",
     "listing_diagnostics": {
       "source_kind": "hogangnono",
       "targets": [
@@ -39,8 +39,8 @@
       ]
     },
     "reason": "completed",
-    "run_id": "a0f59461-f019-4f62-a8a7-8c0c5099e210",
-    "started_at": "2026-06-17T12:52:52+00:00",
+    "run_id": "5f6405fb-af43-4596-a72b-15a06a3fe096",
+    "started_at": "2026-06-20T03:52:02+00:00",
     "status": "success"
   },
   "runs": [
@@ -218,6 +218,46 @@
       "reason": "completed",
       "run_id": "a0f59461-f019-4f62-a8a7-8c0c5099e210",
       "started_at": "2026-06-17T12:52:52+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-06-20T03:52:06+00:00",
+      "listing_diagnostics": {
+        "source_kind": "hogangnono",
+        "targets": [
+          {
+            "complex_id": "baengnyeonsan-hillstate-3",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "E152",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          },
+          {
+            "complex_id": "bulgwang-miseong",
+            "diagnosis": "hogangnono_apt_items_empty",
+            "listing_count": 0,
+            "source_id": "B11b",
+            "source_kind": "hogangnono",
+            "status": "empty_response",
+            "trade_types": "0"
+          }
+        ]
+      },
+      "reason": "completed",
+      "run_id": "5f6405fb-af43-4596-a72b-15a06a3fe096",
+      "started_at": "2026-06-20T03:52:02+00:00",
       "status": "success"
     }
   ]
