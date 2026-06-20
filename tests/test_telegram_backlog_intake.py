@@ -131,6 +131,40 @@ class TelegramBacklogIntakeTests(unittest.TestCase):
             self.assertEqual(fetch.call_args.kwargs["offset"], 201)
             self.assertTrue(updates.exists())
 
+    def test_fetch_updates_uses_env_file_when_process_env_token_is_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            backlog = root / "docs" / "backlog.md"
+            updates = root / "data" / "state" / "telegram-updates.json"
+            state = root / "data" / "state" / "telegram-intake.json"
+            env_file = root / ".env"
+            _write_backlog(backlog)
+            env_file.write_text("TELEGRAM_BOT_TOKEN=token-placeholder\n", encoding="utf-8")
+
+            with (
+                patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": ""}),
+                patch("jeonseloop.telegram_backlog_intake.fetch_telegram_updates") as fetch,
+            ):
+                fetch.return_value = {
+                    "generated_at": "2026-06-17T00:00:00+00:00",
+                    "source": "telegram_getUpdates",
+                    "updates": [_update(202, "텔레그램 백로그 자동 수집 기능을 수정해줘")],
+                }
+                result = run_intake(
+                    IntakeOptions(
+                        updates_path=updates,
+                        state_path=state,
+                        backlog_path=backlog,
+                        env_file=env_file,
+                        fetch_updates=True,
+                        today="2026-06-17",
+                    )
+                )
+
+            self.assertEqual(result["accepted_count"], 1)
+            fetch.assert_called_once()
+            self.assertTrue(updates.exists())
+
     def test_dry_run_fetch_triages_fetched_payload_without_writing_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
