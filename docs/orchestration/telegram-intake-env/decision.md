@@ -11,6 +11,7 @@
 | 1 | PLAN | Planning | Use dedicated worktree `D:\git\i_want_house\.worktrees\telegram-intake-env` | Primary checkout has unrelated uncommitted BL-20260618-008 changes | Prevents mixed-scope source edits | 2026-06-20 |
 | 1 | PLAN | Planning | Treat empty process env values as absent for `.env` fallback | CI can export empty env vars while tests provide fixture `.env` values | Fixes skipped fetch triage without changing non-empty env precedence | 2026-06-20 |
 | 1 | F-001 | Empty env fallback | Verification passed with focused Telegram tests and the full unittest suite | Both the shared helper contract and intake fetch regression are covered | Feature is ready for closeout | 2026-06-20 |
+| 1 | CLOSEOUT | Finalization | No durable wiki update required | The change clarifies helper behavior already covered by code tests and does not introduce new product/domain knowledge beyond backlog closeout | Wiki remains unchanged | 2026-06-20 |
 
 ## Session 1
 - Feature ID: F-001
@@ -25,4 +26,5 @@
 - Risks Introduced:
   - Low: a deliberately empty process env value can now be replaced by a non-empty `.env` value for keys in that file.
 - Follow-up Notes:
-  - None
+  - Pull Request: https://github.com/YeongSeokJeong/i_want_house/pull/21
+  - Commit stack against `main`: `33bf3a5` only, scoped to BL-20260618-009.
