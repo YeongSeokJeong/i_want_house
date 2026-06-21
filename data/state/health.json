@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-06-20T11:20:29+00:00",
-  "last_success_run_id": "27f5d20d-ba5a-40e4-aeec-1f2e5aa61353",
+  "last_success_at": "2026-06-21T04:22:29+00:00",
+  "last_success_run_id": "8d0a4d9c-c1cc-4651-bc51-58458ad339da",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -14,7 +14,7 @@
       "valid_listings": 1,
       "watched_complexes": 2
     },
-    "finished_at": "2026-06-20T11:20:29+00:00",
+    "finished_at": "2026-06-21T04:22:29+00:00",
     "listing_diagnostics": {
       "source_kind": "hogangnono",
       "targets": [
@@ -39,28 +39,11 @@
       ]
     },
     "reason": "completed",
-    "run_id": "27f5d20d-ba5a-40e4-aeec-1f2e5aa61353",
-    "started_at": "2026-06-20T11:20:26+00:00",
+    "run_id": "8d0a4d9c-c1cc-4651-bc51-58458ad339da",
+    "started_at": "2026-06-21T04:22:25+00:00",
     "status": "success"
   },
   "runs": [
-    {
-      "counts": {
-        "alert_cap_overflow": 0,
-        "approved_candidates": 0,
-        "data_quality_blocks": 0,
-        "invalid_listings": 0,
-        "notifications_planned": 0,
-        "notifications_sent": 0,
-        "valid_listings": 1,
-        "watched_complexes": 2
-      },
-      "finished_at": "2026-06-15T01:59:11+00:00",
-      "reason": "completed",
-      "run_id": "d54922e3-8d34-4c1f-8c33-79adfffbe921",
-      "started_at": "2026-06-15T01:59:07+00:00",
-      "status": "success"
-    },
     {
       "counts": {
         "alert_cap_overflow": 0,
@@ -281,6 +264,46 @@
       "reason": "completed",
       "run_id": "27f5d20d-ba5a-40e4-aeec-1f2e5aa61353",
       "started_at": "2026-06-20T11:20:26+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-06-21T04:22:29+00:00",
+      "listing_diagnostics": {
+        "source_kind": "hogangnono",
+        "targets": [
+          {
+            "complex_id": "baengnyeonsan-hillstate-3",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "E152",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          },
+          {
+            "complex_id": "bulgwang-miseong",
+            "diagnosis": "hogangnono_apt_items_empty",
+            "listing_count": 0,
+            "source_id": "B11b",
+            "source_kind": "hogangnono",
+            "status": "empty_response",
+            "trade_types": "0"
+          }
+        ]
+      },
+      "reason": "completed",
+      "run_id": "8d0a4d9c-c1cc-4651-bc51-58458ad339da",
+      "started_at": "2026-06-21T04:22:25+00:00",
       "status": "success"
     }
   ]
