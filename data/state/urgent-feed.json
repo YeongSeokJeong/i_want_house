@@ -1,7 +1,7 @@
 {
   "alert_cap_overflow": 0,
   "alert_limit": 5,
-  "generated_at": "2026-06-23T12:09:11+00:00",
+  "generated_at": "2026-06-24T03:43:22+00:00",
   "items": [
     {
       "alert_planned": false,
@@ -18,5 +18,5 @@
       "title": "백련산힐스테이트3차"
     }
   ],
-  "run_id": "76aca284-1e56-4681-899c-c860dae769d8"
+  "run_id": "0234e4f8-5a0a-4256-bf79-53fa7c8c60f5"
 }
