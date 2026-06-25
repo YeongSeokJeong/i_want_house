@@ -143,6 +143,14 @@
       "min_price_krw": 1300000000,
       "recent_trade_price_krw": null,
       "run_id": "bf6b8308-f2b6-4f33-b47b-8514116596a6"
+    },
+    {
+      "average_price_krw": 1300000000,
+      "finished_at": "2026-06-25T03:42:40+00:00",
+      "listing_count": 1,
+      "min_price_krw": 1300000000,
+      "recent_trade_price_krw": null,
+      "run_id": "a5ef58ed-8858-4025-a992-cacdc7970ee2"
     }
   ]
 }
