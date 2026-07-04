@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-07-04T03:18:13+00:00",
-  "last_success_run_id": "9de54e1b-ea70-4fd0-a392-0fc05f28ae16",
+  "last_success_at": "2026-07-04T10:55:02+00:00",
+  "last_success_run_id": "bbbd5e8a-8c21-4dee-b578-5b8d27643001",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -14,7 +14,7 @@
       "valid_listings": 1,
       "watched_complexes": 2
     },
-    "finished_at": "2026-07-04T03:18:13+00:00",
+    "finished_at": "2026-07-04T10:55:02+00:00",
     "listing_diagnostics": {
       "source_kind": "hogangnono",
       "targets": [
@@ -39,51 +39,11 @@
       ]
     },
     "reason": "completed",
-    "run_id": "9de54e1b-ea70-4fd0-a392-0fc05f28ae16",
-    "started_at": "2026-07-04T03:18:09+00:00",
+    "run_id": "bbbd5e8a-8c21-4dee-b578-5b8d27643001",
+    "started_at": "2026-07-04T10:54:59+00:00",
     "status": "success"
   },
   "runs": [
-    {
-      "counts": {
-        "alert_cap_overflow": 0,
-        "approved_candidates": 0,
-        "data_quality_blocks": 0,
-        "invalid_listings": 0,
-        "notifications_planned": 0,
-        "notifications_sent": 0,
-        "valid_listings": 1,
-        "watched_complexes": 2
-      },
-      "finished_at": "2026-06-29T13:08:39+00:00",
-      "listing_diagnostics": {
-        "source_kind": "hogangnono",
-        "targets": [
-          {
-            "complex_id": "baengnyeonsan-hillstate-3",
-            "diagnosis": "hogangnono_apt_items_returned",
-            "listing_count": 1,
-            "source_id": "E152",
-            "source_kind": "hogangnono",
-            "status": "listings_found",
-            "trade_types": "0"
-          },
-          {
-            "complex_id": "bulgwang-miseong",
-            "diagnosis": "hogangnono_apt_items_empty",
-            "listing_count": 0,
-            "source_id": "B11b",
-            "source_kind": "hogangnono",
-            "status": "empty_response",
-            "trade_types": "0"
-          }
-        ]
-      },
-      "reason": "completed",
-      "run_id": "548cdcab-f4d4-4058-bf93-7e4a2630678a",
-      "started_at": "2026-06-29T13:08:35+00:00",
-      "status": "success"
-    },
     {
       "counts": {
         "alert_cap_overflow": 0,
@@ -442,6 +402,46 @@
       "reason": "completed",
       "run_id": "9de54e1b-ea70-4fd0-a392-0fc05f28ae16",
       "started_at": "2026-07-04T03:18:09+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 1,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-07-04T10:55:02+00:00",
+      "listing_diagnostics": {
+        "source_kind": "hogangnono",
+        "targets": [
+          {
+            "complex_id": "baengnyeonsan-hillstate-3",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "E152",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          },
+          {
+            "complex_id": "bulgwang-miseong",
+            "diagnosis": "hogangnono_apt_items_empty",
+            "listing_count": 0,
+            "source_id": "B11b",
+            "source_kind": "hogangnono",
+            "status": "empty_response",
+            "trade_types": "0"
+          }
+        ]
+      },
+      "reason": "completed",
+      "run_id": "bbbd5e8a-8c21-4dee-b578-5b8d27643001",
+      "started_at": "2026-07-04T10:54:59+00:00",
       "status": "success"
     }
   ]
