@@ -319,6 +319,14 @@
       "min_price_krw": null,
       "recent_trade_price_krw": null,
       "run_id": "a12e8f4c-5331-4e08-872c-42453181a087"
+    },
+    {
+      "average_price_krw": null,
+      "finished_at": "2026-07-06T03:41:17+00:00",
+      "listing_count": 0,
+      "min_price_krw": null,
+      "recent_trade_price_krw": null,
+      "run_id": "a8b56cf2-ab2a-4469-89a1-dfb331767b22"
     }
   ]
 }
