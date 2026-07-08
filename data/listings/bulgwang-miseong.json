@@ -1,3 +1,20 @@
 {
-  "listings": []
+  "listings": [
+    {
+      "area_m2": 84.65,
+      "building": "1동",
+      "complex_id": "bulgwang-miseong",
+      "description": "재전축을 주민모두가 적극 지원하며 조합설립 추진 진행중",
+      "floor": "5",
+      "item_source": "coalition",
+      "link": "https://hogangnono.com/apt/B11b/item-catalog/8250049/0",
+      "listing_id": "hogangnono:249720",
+      "posted_at": "2026-07-08",
+      "price_krw": 1050000000,
+      "real_estate_type": "apt",
+      "source": "hogangnono",
+      "title": "미성",
+      "trade_type": "0"
+    }
+  ]
 }

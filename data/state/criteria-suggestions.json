@@ -1,22 +1,22 @@
 {
   "auto_applied": false,
-  "decision_count": 45,
-  "generated_at": "2026-07-08T02:48:49+00:00",
+  "decision_count": 47,
+  "generated_at": "2026-07-08T11:06:19+00:00",
   "metrics": {
     "approved_decisions": 0,
     "false_positive_ratio": 0.0,
     "false_positive_reason_counts": {},
     "false_positive_signals": 0,
     "reason_counts": {
-      "above_target_price": 45
+      "above_target_price": 47
     },
     "reviewed_decisions": 0,
-    "total_decisions": 45
+    "total_decisions": 47
   },
   "status": "review_required",
   "suggestions": [
     {
-      "decision_count": 45,
+      "decision_count": 47,
       "proposal": "Review watchlist thresholds or exclusion rules related to `above_target_price`.",
       "reason": "above_target_price",
       "requires_human_approval": true,

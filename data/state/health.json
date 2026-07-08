@@ -1,8 +1,8 @@
 {
   "failure_streak": 0,
   "health_alert_eligible": false,
-  "last_success_at": "2026-07-08T02:48:49+00:00",
-  "last_success_run_id": "8b67a7fe-d606-4ef5-8d24-3f46eef75f1e",
+  "last_success_at": "2026-07-08T11:06:19+00:00",
+  "last_success_run_id": "87e66aff-e3aa-47c3-97f1-d45c7653eb6d",
   "latest": {
     "counts": {
       "alert_cap_overflow": 0,
@@ -11,10 +11,10 @@
       "invalid_listings": 0,
       "notifications_planned": 0,
       "notifications_sent": 0,
-      "valid_listings": 1,
+      "valid_listings": 2,
       "watched_complexes": 2
     },
-    "finished_at": "2026-07-08T02:48:49+00:00",
+    "finished_at": "2026-07-08T11:06:19+00:00",
     "listing_diagnostics": {
       "source_kind": "hogangnono",
       "targets": [
@@ -29,61 +29,21 @@
         },
         {
           "complex_id": "bulgwang-miseong",
-          "diagnosis": "hogangnono_apt_items_empty",
-          "listing_count": 0,
+          "diagnosis": "hogangnono_apt_items_returned",
+          "listing_count": 1,
           "source_id": "B11b",
           "source_kind": "hogangnono",
-          "status": "empty_response",
+          "status": "listings_found",
           "trade_types": "0"
         }
       ]
     },
     "reason": "completed",
-    "run_id": "8b67a7fe-d606-4ef5-8d24-3f46eef75f1e",
-    "started_at": "2026-07-08T02:48:45+00:00",
+    "run_id": "87e66aff-e3aa-47c3-97f1-d45c7653eb6d",
+    "started_at": "2026-07-08T11:06:15+00:00",
     "status": "success"
   },
   "runs": [
-    {
-      "counts": {
-        "alert_cap_overflow": 0,
-        "approved_candidates": 0,
-        "data_quality_blocks": 0,
-        "invalid_listings": 0,
-        "notifications_planned": 0,
-        "notifications_sent": 0,
-        "valid_listings": 1,
-        "watched_complexes": 2
-      },
-      "finished_at": "2026-07-03T11:33:41+00:00",
-      "listing_diagnostics": {
-        "source_kind": "hogangnono",
-        "targets": [
-          {
-            "complex_id": "baengnyeonsan-hillstate-3",
-            "diagnosis": "hogangnono_apt_items_returned",
-            "listing_count": 1,
-            "source_id": "E152",
-            "source_kind": "hogangnono",
-            "status": "listings_found",
-            "trade_types": "0"
-          },
-          {
-            "complex_id": "bulgwang-miseong",
-            "diagnosis": "hogangnono_apt_items_empty",
-            "listing_count": 0,
-            "source_id": "B11b",
-            "source_kind": "hogangnono",
-            "status": "empty_response",
-            "trade_types": "0"
-          }
-        ]
-      },
-      "reason": "completed",
-      "run_id": "ba880d3f-1462-4640-b28c-b17b52ba8264",
-      "started_at": "2026-07-03T11:33:37+00:00",
-      "status": "success"
-    },
     {
       "counts": {
         "alert_cap_overflow": 0,
@@ -442,6 +402,46 @@
       "reason": "completed",
       "run_id": "8b67a7fe-d606-4ef5-8d24-3f46eef75f1e",
       "started_at": "2026-07-08T02:48:45+00:00",
+      "status": "success"
+    },
+    {
+      "counts": {
+        "alert_cap_overflow": 0,
+        "approved_candidates": 0,
+        "data_quality_blocks": 0,
+        "invalid_listings": 0,
+        "notifications_planned": 0,
+        "notifications_sent": 0,
+        "valid_listings": 2,
+        "watched_complexes": 2
+      },
+      "finished_at": "2026-07-08T11:06:19+00:00",
+      "listing_diagnostics": {
+        "source_kind": "hogangnono",
+        "targets": [
+          {
+            "complex_id": "baengnyeonsan-hillstate-3",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "E152",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          },
+          {
+            "complex_id": "bulgwang-miseong",
+            "diagnosis": "hogangnono_apt_items_returned",
+            "listing_count": 1,
+            "source_id": "B11b",
+            "source_kind": "hogangnono",
+            "status": "listings_found",
+            "trade_types": "0"
+          }
+        ]
+      },
+      "reason": "completed",
+      "run_id": "87e66aff-e3aa-47c3-97f1-d45c7653eb6d",
+      "started_at": "2026-07-08T11:06:15+00:00",
       "status": "success"
     }
   ]

@@ -1,7 +1,7 @@
 {
   "alert_cap_overflow": 0,
   "alert_limit": 5,
-  "generated_at": "2026-07-08T02:48:49+00:00",
+  "generated_at": "2026-07-08T11:06:19+00:00",
   "items": [
     {
       "alert_planned": false,
@@ -16,7 +16,21 @@
       "price_krw": 1300000000,
       "reason": "above_target_price",
       "title": "백련산힐스테이트3차"
+    },
+    {
+      "alert_planned": false,
+      "area_m2": 84.65,
+      "building": "1동",
+      "complex_id": "bulgwang-miseong",
+      "decision": "reject",
+      "description": "재전축을 주민모두가 적극 지원하며 조합설립 추진 진행중",
+      "floor": "5",
+      "link": "https://hogangnono.com/apt/B11b/item-catalog/8250049/0",
+      "listing_key": "hogangnono:249720",
+      "price_krw": 1050000000,
+      "reason": "above_target_price",
+      "title": "미성"
     }
   ],
-  "run_id": "8b67a7fe-d606-4ef5-8d24-3f46eef75f1e"
+  "run_id": "87e66aff-e3aa-47c3-97f1-d45c7653eb6d"
 }
